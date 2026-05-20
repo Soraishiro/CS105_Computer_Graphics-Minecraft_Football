@@ -1,0 +1,73 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Minecraft</title>
+    <meta
+      name="viewport"
+      content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height"
+    />
+    <link
+      rel="shortcut icon"
+      href="src/resources/favicon.ico"
+      type="image/x-icon"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div id="background" class="fullscreen"></div>
+
+    <div id="content">
+      <div id="canvas-container" class="fullscreen"></div>
+    </div>
+
+    <!-- Controls Overlay HUD -->
+    <div id="controls-overlay">
+      <h3>⚽ STADIUM CONTROLS</h3>
+      <div class="control-row">
+        <span class="keys-group">
+          <span class="key-cap">W</span><span class="key-cap">A</span><span class="key-cap">S</span><span class="key-cap">D</span>
+        </span>
+        <span class="control-desc">Di chuyển (Move)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap font-wide">Space</span>
+        <span class="control-desc">Nhảy (Jump)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap font-wide">2x Space</span>
+        <span class="control-desc">Bay (Fly Mode)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap font-wide">Space</span> / <span class="key-cap font-wide">Shift</span>
+        <span class="control-desc">Bay Lên / Xuống</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap font-wide">Ctrl</span> / <span class="key-cap">2x W</span>
+        <span class="control-desc">Chạy nhanh (Sprint)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap font-wide">F5</span>
+        <span class="control-desc">Góc nhìn (Cam View)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap">E</span>
+        <span class="control-desc">Kho đồ (Inventory)</span>
+      </div>
+      <div class="control-row">
+        <span class="key-cap">T</span>
+        <span class="control-desc">Khung Chat (Chat)</span>
+      </div>
+    </div>
+  </body>
+
+  <!-- Libraries -->
+  <script type="module" src="libraries/pako.es5.min.js"></script>
+  <script type="module" src="libraries/aes.js"></script>
+  <script type="module" src="libraries/asn1.js"></script>
+  <script type="module" src="libraries/bigint-mod-arith.js"></script>
+  <script type="module" src="libraries/sha1.min.js"></script>
+
+  <!-- Minecraft -->
+  <script type="module" src="src/js/Start.js"></script>
+</html>

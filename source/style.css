@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --color-primary: #7C3AED;
+  --color-secondary: #A78BFA;
+  --color-cta: #F43F5E;
+  --color-background: #0F0F23;
+  --color-text: #E2E8F0;
+  --space-xs: 4px;
+  --space-sm: 8px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+canvas {
+  position: absolute;
+  image-rendering: -moz-crisp-edges; /* Firefox */
+  image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
+  image-rendering: pixelated; /* Chrome */
+}
+
+#background {
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  image-rendering: -moz-crisp-edges; /* Firefox */
+  image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
+  image-rendering: pixelated; /* Chrome */
+}
+
+.fullscreen {
+  position: absolute;
+  float: left;
+  display: block;
+  width: 100%;
+  height: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Controls Overlay HUD */
+#controls-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 280px;
+  background: rgba(15, 15, 35, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  pointer-events: none; /* Let clicks pass through to game canvas */
+  user-select: none;
+}
+
+#controls-overlay h3 {
+  margin: 0 0 12px 0;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--color-cta);
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 8px;
+  text-align: center;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: space-between;
+}
+
+.control-row:last-child {
+  margin-bottom: 0;
+}
+
+.keys-group {
+  display: flex;
+  gap: 2px;
+}
+
+.key-cap {
+  display: inline-block;
+  min-width: 14px;
+  height: 18px;
+  line-height: 18px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFF;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.key-cap.font-wide {
+  min-width: 32px;
+}
+
+.control-desc {
+  color: var(--color-text);
+  font-family: 'Be Vietnam Pro', sans-serif;
+  opacity: 0.95;
+  text-align: right;
+  font-weight: 600;
+}
