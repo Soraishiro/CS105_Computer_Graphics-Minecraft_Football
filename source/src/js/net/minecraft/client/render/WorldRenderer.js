@@ -75,6 +75,19 @@ export default class WorldRenderer {
         this.overlay = new THREE.Scene();
         this.overlay.matrixAutoUpdate = false;
 
+        // Lighting
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.scene.add(this.ambientLight);
+
+        this.sunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
+        this.sunLight.castShadow = true;
+        this.sunLight.shadow.mapSize.width = 2048;
+        this.sunLight.shadow.mapSize.height = 2048;
+        this.sunLight.shadow.camera.near = 0.5;
+        this.sunLight.shadow.camera.far = 500;
+        this.scene.add(this.sunLight);
+        this.scene.add(this.sunLight.target);
+
         // Create web renderer
         this.webRenderer = new THREE.WebGLRenderer({
             canvas: this.window.canvasWorld,
@@ -193,7 +206,7 @@ export default class WorldRenderer {
         let brightnessAtPosition = this.minecraft.world.getLightBrightnessForEntity(player);
         let renderDistance = this.minecraft.settings.viewDistance / 32.0;
         let fogBrightness = brightnessAtPosition * (1.0 - renderDistance) + renderDistance;
-        
+
         // Sanity check for NaN
         if (isNaN(fogBrightness)) fogBrightness = 1.0;
         if (isNaN(this.fogBrightness)) this.fogBrightness = fogBrightness;
@@ -494,6 +507,27 @@ export default class WorldRenderer {
         // Rotate sky cycle
         let angle = this.minecraft.world.getCelestialAngle(partialTicks);
         this.cycleGroup.rotation.set(angle * Math.PI * 2 + Math.PI / 2, 0, 0);
+
+        // ── Sync DirectionalLight (Sun) voi chu ky ngay/dem ──────────
+        // Dung cung theta voi cycleGroup de huong sang khop voi vi tri mat troi tren troi
+        const theta = angle * Math.PI * 2 + Math.PI / 2;
+        this.sunLight.position.set(0, Math.sin(theta) * 200 + 65, -Math.cos(theta) * 200);
+        this.sunLight.target.position.set(0, 65, 0);
+        this.sunLight.target.updateMatrixWorld();
+
+        // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
+        let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
+        this.sunLight.intensity = brightness * 1.2;
+        this.ambientLight.intensity = 0.15 + brightness * 0.25;
+
+        // Mau anh sang theo gio trong ngay
+        if (brightness > 0.5) {
+            this.sunLight.color.set(0xfff4e0);  // ban ngay: vang am
+        } else if (brightness > 0.05) {
+            this.sunLight.color.set(0xff8844);  // hoang hon / binh minh: cam do
+        } else {
+            this.sunLight.intensity = 0;         // ban dem: tat hoan toan
+        }
     }
 
     setupFog(x, z, inWater, partialTicks) {
