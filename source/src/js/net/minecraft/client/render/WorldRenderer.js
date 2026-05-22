@@ -76,9 +76,17 @@ export default class WorldRenderer {
         this.overlay = new THREE.Scene();
         this.overlay.matrixAutoUpdate = false;
 
-        // Lighting
+        // Lighting cho scene chính
         this.ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
         this.scene.add(this.ambientLight);
+
+        // Lighting cho overlay scene (góc nhìn thứ nhất)
+        this.overlayAmbientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.overlay.add(this.overlayAmbientLight);
+
+        this.overlaySunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
+        this.overlay.add(this.overlaySunLight);
+        this.overlay.add(this.overlaySunLight.target);
 
         this.sunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
         this.sunLight.castShadow = true;
@@ -86,8 +94,23 @@ export default class WorldRenderer {
         this.sunLight.shadow.mapSize.height = 2048;
         this.sunLight.shadow.camera.near = 0.5;
         this.sunLight.shadow.camera.far = 500;
+
+        // Mo rong vung tinh toan bong cho DirectionalLight (vi mac dinh chi co 5x5)
+        let d = 100;
+        this.sunLight.shadow.camera.left = -d;
+        this.sunLight.shadow.camera.right = d;
+        this.sunLight.shadow.camera.top = d;
+        this.sunLight.shadow.camera.bottom = -d;
+        this.sunLight.shadow.camera.updateProjectionMatrix();
+
         this.scene.add(this.sunLight);
         this.scene.add(this.sunLight.target);
+
+        // Them helper de hien thi truc quan tia sang mat troi va vung do bong
+        this.sunLightHelper = new THREE.DirectionalLightHelper(this.sunLight, 20);
+        this.scene.add(this.sunLightHelper);
+        this.sunLightCameraHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
+        this.scene.add(this.sunLightCameraHelper);
 
         // Create web renderer
         this.webRenderer = new THREE.WebGLRenderer({
@@ -125,7 +148,6 @@ export default class WorldRenderer {
         testPlane.position.set(0, 65.1, 5); // Nằm ngay trên mặt cỏ ở giữa sân
         testPlane.receiveShadow = true;
         this.scene.add(testPlane);
-
         // 2. Vật thể để đổ bóng (castShadow)
         let boxGeo = new THREE.BoxGeometry(1, 1, 1);
         let boxMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
@@ -133,7 +155,6 @@ export default class WorldRenderer {
         testBox.position.set(0, 66, 5);
         testBox.castShadow = true;
         this.scene.add(testBox);
-
         // 3. Nguồn sáng SpotLight
         let testSpotLight = new THREE.SpotLight(0xffffff, 5);
         testSpotLight.position.set(-3, 70, 5);
@@ -146,11 +167,9 @@ export default class WorldRenderer {
         testSpotLight.shadow.bias = -0.0001;
         this.scene.add(testSpotLight);
         this.scene.add(testSpotLight.target);
-
         // Hiển thị Helper để dễ nhìn thấy tia sáng của SpotLight
         let spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
         this.scene.add(spotLightHelper);
-
         // 4. GUI UI để điều khiển trực tiếp trên web
         const gui = new GUI({ title: 'SpotLight Control' });
         const folder = gui.addFolder('Test SpotLight');
@@ -562,10 +581,15 @@ export default class WorldRenderer {
         this.sunLight.target.position.set(0, 65, 0);
         this.sunLight.target.updateMatrixWorld();
 
+        // Cap nhat helper moi khi mat troi di chuyen
+        if (this.sunLightHelper) this.sunLightHelper.update();
+        if (this.sunLightCameraHelper) this.sunLightCameraHelper.update();
+
         // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
         let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
         this.sunLight.intensity = brightness * 1.2;
         this.ambientLight.intensity = 0.15 + brightness * 0.25;
+        this.overlayAmbientLight.intensity = 0.1 + brightness * 0.25;
 
         // Mau anh sang theo gio trong ngay
         if (brightness > 0.5) {
