@@ -112,6 +112,9 @@ export default class WorldRenderer {
         this.sunLightCameraHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
         this.scene.add(this.sunLightCameraHelper);
 
+        // Bo quan ly Event-driven PointLight
+        this.dynamicLights = new Map();
+
         // Create web renderer
         this.webRenderer = new THREE.WebGLRenderer({
             canvas: this.window.canvasWorld,
@@ -900,6 +903,34 @@ export default class WorldRenderer {
         stack.rotateZ(MathHelper.toRadians(Math.sin(walked * Math.PI) * yaw * 3.0));
         stack.rotateX(MathHelper.toRadians(Math.abs(Math.cos(walked * Math.PI - 0.2) * yaw) * 5.0));
         stack.rotateX(MathHelper.toRadians(pitch));
+    }
+
+    addDynamicLight(x, y, z, color, intensity, distance) {
+        let key = `${x},${y},${z}`;
+        if (this.dynamicLights.has(key)) return;
+
+        let pointLight = new THREE.PointLight(color, intensity, distance);
+        pointLight.position.set(x + 0.5, y + 0.7, z + 0.5); // Nâng cao một chút để tránh kẹt vào mesh của đuốc
+
+        // Bật bóng đổ đa hướng (Rất nặng máy nhưng cần thiết cho đồ án)
+        pointLight.castShadow = true;
+        pointLight.shadow.mapSize.width = 512; // Giữ ở mức trung bình để đỡ lag
+        pointLight.shadow.mapSize.height = 512;
+        // pointLight.shadow.camera.near = 0.1;
+        pointLight.shadow.camera.far = distance;
+        pointLight.shadow.bias = -0.005; // Tránh hiện tượng shadow acne
+
+        this.scene.add(pointLight);
+        this.dynamicLights.set(key, pointLight);
+    }
+
+    removeDynamicLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.dynamicLights.has(key)) {
+            let light = this.dynamicLights.get(key);
+            this.scene.remove(light);
+            this.dynamicLights.delete(key);
+        }
     }
 
     reset() {

@@ -24,7 +24,7 @@ export default class BlockTorch extends Block {
     }
 
     getLightValue() {
-        return 14;
+        return 0;
     }
 
     isSolid() {
