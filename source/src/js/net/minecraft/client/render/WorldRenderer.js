@@ -106,11 +106,9 @@ export default class WorldRenderer {
         this.scene.add(this.sunLight);
         this.scene.add(this.sunLight.target);
 
-        // Them helper de hien thi truc quan tia sang mat troi va vung do bong
-        this.sunLightHelper = new THREE.DirectionalLightHelper(this.sunLight, 20);
+        // Helper cho shadow camera của sunlight
+        this.sunLightHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
         this.scene.add(this.sunLightHelper);
-        this.sunLightCameraHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
-        this.scene.add(this.sunLightCameraHelper);
 
         // Bo quan ly Event-driven PointLight
         this.dynamicLights = new Map();
@@ -143,22 +141,6 @@ export default class WorldRenderer {
         this.scene.add(this.blockHitBox);
 
         // --- TEST SETUP CHO SPOTLIGHT ---
-        // 1. Mặt phẳng để nhận bóng (receiveShadow)
-        let planeGeo = new THREE.PlaneGeometry(10, 10);
-        planeGeo.rotateX(-Math.PI / 2);
-        let planeMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.8 });
-        let testPlane = new THREE.Mesh(planeGeo, planeMat);
-        testPlane.position.set(0, 65.1, 5); // Nằm ngay trên mặt cỏ ở giữa sân
-        testPlane.receiveShadow = true;
-        this.scene.add(testPlane);
-        // 2. Vật thể để đổ bóng (castShadow)
-        let boxGeo = new THREE.BoxGeometry(1, 1, 1);
-        let boxMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
-        let testBox = new THREE.Mesh(boxGeo, boxMat);
-        testBox.position.set(0, 66, 5);
-        testBox.castShadow = true;
-        this.scene.add(testBox);
-        // 3. Nguồn sáng SpotLight
         let testSpotLight = new THREE.SpotLight(0xffffff, 5);
         testSpotLight.position.set(-3, 70, 5);
         testSpotLight.target.position.set(0, 64.5, 5);
@@ -171,8 +153,8 @@ export default class WorldRenderer {
         this.scene.add(testSpotLight);
         this.scene.add(testSpotLight.target);
         // Hiển thị Helper để dễ nhìn thấy tia sáng của SpotLight
-        let spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
-        this.scene.add(spotLightHelper);
+        this.spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
+        this.scene.add(this.spotLightHelper);
 
         // --- GUI Control cho toàn bộ Hệ thống Ánh sáng ---
         this.lightingParams = {
@@ -180,7 +162,8 @@ export default class WorldRenderer {
             ambientIntensity: 0.4,
             sunIntensity: 1.2,
             torchIntensity: 1.5,
-            torchDistance: 15
+            torchDistance: 15,
+            showSunLightHelper: true
         };
 
         const gui = new GUI({ title: 'Lighting Control' });
@@ -214,6 +197,11 @@ export default class WorldRenderer {
             if (!this.lightingParams.enableDayNightLighting) {
                 this.sunLight.intensity = value;
                 this.overlaySunLight.intensity = value;
+            }
+        });
+        sunFolder.add(this.lightingParams, 'showSunLightHelper').name('Show Helper').onChange((value) => {
+            if (this.sunLightHelper) {
+                this.sunLightHelper.visible = value;
             }
         });
 
@@ -622,13 +610,34 @@ export default class WorldRenderer {
         // ── Sync DirectionalLight (Sun) voi chu ky ngay/dem ──────────
         // Dung cung theta voi cycleGroup de huong sang khop voi vi tri mat troi tren troi
         const theta = angle * Math.PI * 2 + Math.PI / 2;
-        this.sunLight.position.set(0, Math.sin(theta) * 200 + 65, -Math.cos(theta) * 200);
-        this.sunLight.target.position.set(0, 65, 0);
+        this.sunLight.position.set(
+            this.camera.position.x,
+            Math.sin(theta) * 200 + this.camera.position.y,
+            this.camera.position.z - Math.cos(theta) * 200
+        );
+        this.sunLight.target.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
         this.sunLight.target.updateMatrixWorld();
+        this.sunLight.updateMatrixWorld();
 
-        // Cap nhat helper moi khi mat troi di chuyen
-        if (this.sunLightHelper) this.sunLightHelper.update();
-        if (this.sunLightCameraHelper) this.sunLightCameraHelper.update();
+        // Đồng bộ vị trí và góc nhìn của shadow camera thủ công để helper cập nhật đúng
+        this.sunLight.shadow.camera.position.setFromMatrixPosition(this.sunLight.matrixWorld);
+        const targetPos = new THREE.Vector3().setFromMatrixPosition(this.sunLight.target.matrixWorld);
+        this.sunLight.shadow.camera.lookAt(targetPos);
+        this.sunLight.shadow.camera.updateMatrixWorld();
+
+        if (this.sunLightHelper) {
+            this.sunLightHelper.update();
+            this.sunLightHelper.updateMatrixWorld(true);
+            if (this.lightingParams) {
+                this.sunLightHelper.visible = this.lightingParams.showSunLightHelper;
+            }
+        }
+
+        if (this.spotLightHelper) {
+            this.spotLightHelper.light.target.updateMatrixWorld();
+            this.spotLightHelper.update();
+            this.spotLightHelper.updateMatrixWorld(true);
+        }
 
         // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
         let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
