@@ -77,7 +77,21 @@ export default class ChunkSection {
             }
 
             // Draw chunk section
-            tessellator.draw(this.group);
+            let mesh = tessellator.draw(this.group);
+
+            // Nang cap rieng cho Chunk thanh MeshStandardMaterial de nhan bong
+            mesh.geometry.computeVertexNormals();
+            mesh.material = new THREE.MeshStandardMaterial({
+                map: mesh.material.map,
+                side: THREE.FrontSide,
+                transparent: true,
+                alphaTest: 0.1,
+                depthTest: true,
+                vertexColors: true,
+                roughness: 0.8
+            });
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
         }
     }
 

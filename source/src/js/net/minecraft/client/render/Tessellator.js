@@ -3,12 +3,13 @@ import * as THREE from "../../../../../../libraries/three.module.js";
 export default class Tessellator {
 
     constructor() {
-        this.material = new THREE.MeshStandardMaterial({
+        this.material = new THREE.MeshBasicMaterial({
             side: THREE.FrontSide,
             transparent: true,
             alphaTest: 0.1,
             depthTest: true,
-            vertexColors: false
+            vertexColors: true
+
         });
 
         this.red = 0;
@@ -101,12 +102,7 @@ export default class Tessellator {
             index.push(i * verticesPerFace + 2);
         }
         geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(index), 1));
-        geometry.computeVertexNormals();
-
         let mesh = new THREE.Mesh(geometry, this.material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-
         group.matrixAutoUpdate = false;
         group.add(mesh);
         return mesh;
