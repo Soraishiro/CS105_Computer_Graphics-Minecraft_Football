@@ -173,16 +173,6 @@ export default class WorldRenderer {
         // Hiển thị Helper để dễ nhìn thấy tia sáng của SpotLight
         let spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
         this.scene.add(spotLightHelper);
-        // 4. GUI UI để điều khiển trực tiếp trên web
-        const gui = new GUI({ title: 'SpotLight Control' });
-        const folder = gui.addFolder('Test SpotLight');
-        folder.add(testSpotLight.position, 'x', -20, 20).name('Pos X').onChange(() => spotLightHelper.update());
-        folder.add(testSpotLight.position, 'y', 65, 90).name('Pos Y').onChange(() => spotLightHelper.update());
-        folder.add(testSpotLight.position, 'z', -20, 20).name('Pos Z').onChange(() => spotLightHelper.update());
-        folder.add(testSpotLight, 'intensity', 0, 20).name('Intensity');
-        folder.add(testSpotLight, 'angle', 0, Math.PI / 2).name('Angle').onChange(() => spotLightHelper.update());
-        folder.add(testSpotLight, 'penumbra', 0, 1).name('Penumbra');
-        folder.open();
     }
 
     render(partialTicks) {
@@ -918,7 +908,7 @@ export default class WorldRenderer {
         pointLight.shadow.mapSize.height = 512;
         // pointLight.shadow.camera.near = 0.1;
         pointLight.shadow.camera.far = distance;
-        pointLight.shadow.bias = -0.005; // Tránh hiện tượng shadow acne
+        pointLight.shadow.bias = -0.0001; // Tránh hiện tượng shadow acne
 
         this.scene.add(pointLight);
         this.dynamicLights.set(key, pointLight);

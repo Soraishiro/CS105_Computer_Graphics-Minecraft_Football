@@ -24,11 +24,15 @@ export default class BlockTorch extends Block {
     }
 
     getLightValue() {
-        return 0;
+        return 14;
     }
 
     isSolid() {
         return false;
+    }
+
+    getTransparency() {
+        return 1.0;
     }
 
     isTranslucent() {

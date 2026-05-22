@@ -83,14 +83,17 @@ export default class ChunkSection {
             mesh.geometry.computeVertexNormals();
             mesh.material = new THREE.MeshStandardMaterial({
                 map: mesh.material.map,
+                roughness: 1.0,             // Mat dat thi nen nham hoan toan
+                metalness: 0.0,             // Dua ve 0 vi co/dat khong phai kim loai
                 side: THREE.FrontSide,
                 transparent: true,
                 alphaTest: 0.1,
                 depthTest: true,
-                vertexColors: true,
-                roughness: 0.8
+                vertexColors: true
             });
-            mesh.castShadow = true;
+
+            // Cac khoi trong suot (nhu Duoc, Nuoc, Kinh) khong do bong de tranh loi tu che khuat anh sang cua chinh minh!
+            mesh.castShadow = !isTranslucentRenderPhase;
             mesh.receiveShadow = true;
         }
     }
