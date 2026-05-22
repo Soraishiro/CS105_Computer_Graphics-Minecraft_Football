@@ -11,16 +11,19 @@ export default class BallRenderer extends EntityRenderer {
 
     init() {
         this.geometry = new THREE.SphereGeometry(0.25, 16, 16);
-        
+
         let ballTexture = this.worldRenderer.minecraft.getThreeTexture('entity/football.png');
         if (ballTexture) {
             ballTexture.magFilter = THREE.NearestFilter;
             ballTexture.minFilter = THREE.NearestFilter;
         }
 
-        this.material = new THREE.MeshBasicMaterial({
+        // MeshStandardMaterial de nhan anh sang tu AmbientLight / DirectionalLight / SpotLight
+        this.material = new THREE.MeshStandardMaterial({
             map: ballTexture,
-            color: 0xFFFFFF
+            color: 0xFFFFFF,
+            roughness: 0.6,
+            metalness: 0.1
         });
 
         this.mesh = new THREE.Mesh(this.geometry, this.material);
@@ -28,7 +31,7 @@ export default class BallRenderer extends EntityRenderer {
         this.mesh.receiveShadow = true;
 
         this.group.add(this.mesh);
-        this.mesh.position.y = 0.25; 
+        this.mesh.position.y = 0.25;
     }
 
     render(entity, partialTicks) {

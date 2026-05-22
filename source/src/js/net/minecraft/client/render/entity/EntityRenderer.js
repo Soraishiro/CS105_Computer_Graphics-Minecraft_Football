@@ -23,6 +23,28 @@ export default class EntityRenderer {
         let brightness = this.group.buildMeta.brightness;
         this.tessellator.setColor(brightness, brightness, brightness);
         this.model.rebuild(this.tessellator, this.group);
+
+        // Bat castShadow cho tat ca cac bo phan cua entity (tay, chan, than, dau...)
+        this.group.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true; // Cho phep nhan bong cua chinh no
+
+                // Thu doi sang MeshStandardMaterial giong nhu qua bong de ho tro anh sang/bong do Three.js
+                if (child.material && child.material.type === "MeshBasicMaterial") {
+                    child.geometry.computeVertexNormals();
+
+                    child.material = new THREE.MeshStandardMaterial({
+                        map: child.material.map,
+                        color: 0xffffff,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        vertexColors: false,
+                        roughness: 0.8
+                    });
+                }
+            }
+        });
     }
 
     fillMeta(entity, meta) {

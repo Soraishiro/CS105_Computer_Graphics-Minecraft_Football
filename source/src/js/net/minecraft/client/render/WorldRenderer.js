@@ -7,6 +7,7 @@ import ChunkSection from "../world/ChunkSection.js";
 import Random from "../../util/Random.js";
 import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
+import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
 
 export default class WorldRenderer {
 
@@ -114,6 +115,52 @@ export default class WorldRenderer {
             color: 0x000000
         }));
         this.scene.add(this.blockHitBox);
+
+        // --- TEST SETUP CHO SPOTLIGHT ---
+        // 1. Mặt phẳng để nhận bóng (receiveShadow)
+        let planeGeo = new THREE.PlaneGeometry(10, 10);
+        planeGeo.rotateX(-Math.PI / 2);
+        let planeMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.8 });
+        let testPlane = new THREE.Mesh(planeGeo, planeMat);
+        testPlane.position.set(0, 65.1, 5); // Nằm ngay trên mặt cỏ ở giữa sân
+        testPlane.receiveShadow = true;
+        this.scene.add(testPlane);
+
+        // 2. Vật thể để đổ bóng (castShadow)
+        let boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        let boxMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
+        let testBox = new THREE.Mesh(boxGeo, boxMat);
+        testBox.position.set(0, 66, 5);
+        testBox.castShadow = true;
+        this.scene.add(testBox);
+
+        // 3. Nguồn sáng SpotLight
+        let testSpotLight = new THREE.SpotLight(0xffffff, 5);
+        testSpotLight.position.set(-3, 70, 5);
+        testSpotLight.target.position.set(0, 64.5, 5);
+        testSpotLight.angle = Math.PI / 6;
+        testSpotLight.penumbra = 0.5;
+        testSpotLight.castShadow = true;
+        testSpotLight.shadow.mapSize.width = 1024;
+        testSpotLight.shadow.mapSize.height = 1024;
+        testSpotLight.shadow.bias = -0.0001;
+        this.scene.add(testSpotLight);
+        this.scene.add(testSpotLight.target);
+
+        // Hiển thị Helper để dễ nhìn thấy tia sáng của SpotLight
+        let spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
+        this.scene.add(spotLightHelper);
+
+        // 4. GUI UI để điều khiển trực tiếp trên web
+        const gui = new GUI({ title: 'SpotLight Control' });
+        const folder = gui.addFolder('Test SpotLight');
+        folder.add(testSpotLight.position, 'x', -20, 20).name('Pos X').onChange(() => spotLightHelper.update());
+        folder.add(testSpotLight.position, 'y', 65, 90).name('Pos Y').onChange(() => spotLightHelper.update());
+        folder.add(testSpotLight.position, 'z', -20, 20).name('Pos Z').onChange(() => spotLightHelper.update());
+        folder.add(testSpotLight, 'intensity', 0, 20).name('Intensity');
+        folder.add(testSpotLight, 'angle', 0, Math.PI / 2).name('Angle').onChange(() => spotLightHelper.update());
+        folder.add(testSpotLight, 'penumbra', 0, 1).name('Penumbra');
+        folder.open();
     }
 
     render(partialTicks) {
