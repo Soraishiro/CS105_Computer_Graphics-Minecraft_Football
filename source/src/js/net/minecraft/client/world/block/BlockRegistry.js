@@ -20,6 +20,8 @@ import BlockGoalPost from "./type/BlockGoalPost.js";
 import BlockGoalNet from "./type/BlockGoalNet.js";
 import BlockCornerFlag from "./type/BlockCornerFlag.js";
 import BlockFlagTop from "./type/BlockFlagTop.js";
+import BlockRedstoneLamp from "./type/BlockRedstoneLamp.js";
+import BlockRedstoneLampOn from "./type/BlockRedstoneLampOn.js";
 
 export class BlockRegistry {
 
@@ -67,5 +69,9 @@ export class BlockRegistry {
         BlockRegistry.CORNER_ARC = new BlockTurf(113, StadiumTextures.CORNER_ARC_TILE);
         // Dark green for sideline stands (teal asset)
         BlockRegistry.SEAT_GREEN = new BlockTurf(114, StadiumTextures.TEAL_SEAT_BLOCK);
+
+        // Stadium Lights
+        BlockRegistry.REDSTONE_LAMP = new BlockRedstoneLamp(115, StadiumTextures.REDSTONE_LAMP);
+        BlockRegistry.REDSTONE_LAMP_ON = new BlockRedstoneLampOn(116, StadiumTextures.REDSTONE_LAMP_ON);
     }
 }

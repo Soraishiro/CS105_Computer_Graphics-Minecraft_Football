@@ -77,6 +77,8 @@ class Start {
       237: 'stadium_assets/37_crowd_block_dark.png',
       238: 'stadium_assets/38_decorative_banner_block.png',
       239: 'stadium_assets/39_soccer_ball_texture.png',
+      240: 'stadium_assets/40_redstone_lamp.png',
+      241: 'stadium_assets/41_redstone_lamp_on.png',
     };
 
     // Get the base atlas canvas (256×256)
