@@ -3,6 +3,7 @@ import GuiButton from "../widgets/GuiButton.js";
 import GuiSwitchButton from "../widgets/GuiSwitchButton.js";
 import GuiSliderButton from "../widgets/GuiSliderButton.js";
 import GuiControls from "./GuiControls.js";
+import GuiLightingOptions from "./GuiLightingOptions.js";
 
 export default class GuiOptions extends GuiScreen {
 
@@ -35,7 +36,11 @@ export default class GuiOptions extends GuiScreen {
             this.minecraft.displayScreen(new GuiControls(this));
         }));
 
-        this.buttonList.push(new GuiButton("Done", this.width / 2 - 100, y + 130, 200, 20, () => {
+        this.buttonList.push(new GuiButton("Lighting Settings...", this.width / 2 - 100, y + 24 * 5, 200, 20, () => {
+            this.minecraft.displayScreen(new GuiLightingOptions(this));
+        }));
+
+        this.buttonList.push(new GuiButton("Done", this.width / 2 - 100, y + 154, 200, 20, () => {
             this.minecraft.displayScreen(this.previousScreen);
         }));
     }

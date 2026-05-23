@@ -18,6 +18,21 @@ export default class GameSettings {
         this.viewDistance = 8;
         this.debugOverlay = false;
         this.serverAddress = 'server.labystudio.de';
+
+        // Lighting settings
+        this.enableDayNightLighting = true;
+        this.ambientIntensity = 0.4;
+        this.sunIntensity = 1.2;
+        this.torchIntensity = 2.5;
+        this.torchDistance = 15;
+        this.showSunLightHelper = false;
+        this.torchCastShadow = false;
+        this.sunCastShadow = false;
+        this.spotLightIntensity = 5;
+        this.spotLightDistance = 100;
+        this.spotLightAngle = 30; // degrees, convert to rad where needed
+        this.spotLightCastShadow = false;
+        this.showSpotLightHelper = false;
     }
 
     load() {
@@ -29,8 +44,9 @@ export default class GameSettings {
                 while (c.charAt(0) === ' ') c = c.substring(1, c.length);
                 if (c.indexOf(nameEQ) === 0) {
                     let value = c.substring(nameEQ.length, c.length);
-                    if (value.match(/^[0-9]+$/)) {
-                        value = parseInt(value);
+                    // Match integer or float
+                    if (value.match(/^-?[0-9]+(\.[0-9]+)?$/)) {
+                        value = parseFloat(value);
                     }
                     if (value === 'true') {
                         value = true;

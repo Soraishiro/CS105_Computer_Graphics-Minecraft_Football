@@ -142,95 +142,7 @@ export default class WorldRenderer {
         }));
         this.scene.add(this.blockHitBox);
 
-        // --- GUI Control cho toàn bộ Hệ thống Ánh sáng ---
-        this.lightingParams = {
-            enableDayNightLighting: true,
-            ambientIntensity: 0.4,
-            sunIntensity: 1.2,
-            torchIntensity: 2.5,
-            torchDistance: 15,
-            showSunLightHelper: false,
-            torchCastShadow: false,
-            sunCastShadow: false,
-            spotLightIntensity: 5,
-            spotLightDistance: 100,
-            spotLightAngle: Math.PI / 6,
-            spotLightCastShadow: false,
-            showSpotLightHelper: false
-        };
-
-        const gui = new GUI({ title: 'Lighting Control' });
-        // Chuyển GUI sang góc bên trái
-        gui.domElement.style.position = 'absolute';
-        gui.domElement.style.top = '0px';
-        gui.domElement.style.left = '0px';
-        gui.domElement.style.right = 'auto';
-
-        const mainFolder = gui.addFolder('General');
-        mainFolder.add(this.lightingParams, 'enableDayNightLighting').name('Auto Day/Night').onChange((value) => {
-            if (!value) {
-                // Khi tắt tự động, áp dụng ngay giá trị hiện tại của thanh trượt
-                this.ambientLight.intensity = this.lightingParams.ambientIntensity;
-                this.overlayAmbientLight.intensity = this.lightingParams.ambientIntensity;
-                this.sunLight.intensity = this.lightingParams.sunIntensity;
-                this.overlaySunLight.intensity = this.lightingParams.sunIntensity;
-            }
-        });
-
-        const ambientFolder = gui.addFolder('Ambient Light');
-        ambientFolder.add(this.lightingParams, 'ambientIntensity', 0, 5).name('Intensity').onChange((value) => {
-            if (!this.lightingParams.enableDayNightLighting) {
-                this.ambientLight.intensity = value;
-                this.overlayAmbientLight.intensity = value;
-            }
-        });
-
-        const sunFolder = gui.addFolder('Sun Light');
-        sunFolder.add(this.lightingParams, 'sunIntensity', 0, 5).name('Intensity').onChange((value) => {
-            if (!this.lightingParams.enableDayNightLighting) {
-                this.sunLight.intensity = value;
-                this.overlaySunLight.intensity = value;
-            }
-        });
-        sunFolder.add(this.lightingParams, 'showSunLightHelper').name('Show Helper').onChange((value) => {
-            if (this.sunLightHelper) {
-                this.sunLightHelper.visible = value;
-            }
-        });
-        sunFolder.add(this.lightingParams, 'sunCastShadow').name('Cast Shadow').onChange((value) => {
-            this.sunLight.castShadow = value;
-        });
-
-        const torchFolder = gui.addFolder('All Torches');
-        torchFolder.add(this.lightingParams, 'torchIntensity', 0, 10).name('Intensity').onChange((value) => {
-            this.dynamicLights.forEach(light => light.intensity = value);
-        });
-        torchFolder.add(this.lightingParams, 'torchDistance', 5, 50).name('Distance').onChange((value) => {
-            this.dynamicLights.forEach(light => light.distance = value);
-        });
-        torchFolder.add(this.lightingParams, 'torchCastShadow').name('Cast Shadow').onChange((value) => {
-            this.dynamicLights.forEach(light => light.castShadow = value);
-        });
-
-        const spotFolder = gui.addFolder('Stadium Spotlights');
-        spotFolder.add(this.lightingParams, 'spotLightIntensity', 0, 20).name('Intensity').onChange((value) => {
-            this.spotLights.forEach(obj => obj.light.intensity = value);
-        });
-        spotFolder.add(this.lightingParams, 'spotLightAngle', 0, Math.PI / 2).name('Angle').onChange((value) => {
-            this.spotLights.forEach(obj => {
-                obj.light.angle = value;
-                if (obj.helper) obj.helper.update();
-            });
-        });
-        spotFolder.add(this.lightingParams, 'spotLightCastShadow').name('Cast Shadow').onChange((value) => {
-            this.spotLights.forEach(obj => obj.light.castShadow = value);
-        });
-        spotFolder.add(this.lightingParams, 'showSpotLightHelper').name('Show Helper').onChange((value) => {
-            this.spotLights.forEach(obj => {
-                if (obj.helper) obj.helper.visible = value;
-            });
-        });
-        // ------------------------------------------------
+        // GUI Removed - Migrated to GuiLightingOptions    
     }
 
     render(partialTicks) {
@@ -646,8 +558,8 @@ export default class WorldRenderer {
         if (this.sunLightHelper) {
             this.sunLightHelper.update();
             this.sunLightHelper.updateMatrixWorld(true);
-            if (this.lightingParams) {
-                this.sunLightHelper.visible = this.lightingParams.showSunLightHelper;
+            if (this.minecraft.settings) {
+                this.sunLightHelper.visible = this.minecraft.settings.showSunLightHelper;
             }
         }
 
@@ -660,7 +572,7 @@ export default class WorldRenderer {
         // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
         let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
 
-        if (this.lightingParams && this.lightingParams.enableDayNightLighting) {
+        if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
             this.sunLight.intensity = brightness * 1.2;
             this.ambientLight.intensity = 0.15 + brightness * 0.25;
             this.overlayAmbientLight.intensity = 0.1 + brightness * 0.25;
@@ -982,14 +894,14 @@ export default class WorldRenderer {
         if (this.dynamicLights.has(key)) return;
 
         // Su dung thong so tu GUI neu co, neu khong thi dung thong so mac dinh
-        let finalIntensity = this.lightingParams ? this.lightingParams.torchIntensity : intensity;
-        let finalDistance = this.lightingParams ? this.lightingParams.torchDistance : distance;
+        let finalIntensity = this.minecraft.settings ? this.minecraft.settings.torchIntensity : intensity;
+        let finalDistance = this.minecraft.settings ? this.minecraft.settings.torchDistance : distance;
 
         let pointLight = new THREE.PointLight(color, finalIntensity, finalDistance);
-        pointLight.position.set(x + 0.5, y + 0.7, z + 0.5); // Nâng cao một chút để tránh kẹt vào mesh của đuốc
+        pointLight.position.set(x + 0.5, y + 0.5, z + 0.5);
 
-        // Bật bóng đổ đa hướng (Rất nặng máy nhưng cần thiết cho đồ án)
-        pointLight.castShadow = this.lightingParams ? this.lightingParams.torchCastShadow : false;
+        // Turn on shadow map
+        pointLight.castShadow = this.minecraft.settings ? this.minecraft.settings.torchCastShadow : false;
         pointLight.shadow.mapSize.width = 512; // Giữ ở mức trung bình để đỡ lag
         pointLight.shadow.mapSize.height = 512;
         // pointLight.shadow.camera.near = 0.1;
@@ -1015,11 +927,11 @@ export default class WorldRenderer {
 
         console.log("Added Spotlight");
 
-        let spotLight = new THREE.SpotLight(0xffffff, this.lightingParams.spotLightIntensity, this.lightingParams.spotLightDistance);
+        let spotLight = new THREE.SpotLight(0xffffff, this.minecraft.settings.spotLightIntensity, this.minecraft.settings.spotLightDistance);
         spotLight.position.set(x + 0.5, y + 0.5, z + 0.5);
-        spotLight.angle = this.lightingParams.spotLightAngle;
+        spotLight.angle = this.minecraft.settings.spotLightAngle;
         spotLight.penumbra = 0.5;
-        spotLight.castShadow = this.lightingParams.spotLightCastShadow;
+        spotLight.castShadow = this.minecraft.settings.spotLightCastShadow;
         spotLight.shadow.mapSize.width = 1024;
         spotLight.shadow.mapSize.height = 1024;
         spotLight.shadow.bias = -0.0001;
@@ -1044,7 +956,7 @@ export default class WorldRenderer {
         this.scene.add(spotLight);
 
         let helper = new THREE.SpotLightHelper(spotLight);
-        helper.visible = this.lightingParams.showSpotLightHelper;
+        helper.visible = this.minecraft.settings.showSpotLightHelper;
         this.scene.add(helper);
 
         // Bắt buộc cập nhật ma trận để Helper nhận diện đúng hướng ngay lúc vừa tạo
@@ -1091,4 +1003,40 @@ export default class WorldRenderer {
         this.webRenderer.clear();
         this.overlay.clear();
     }
+
+    updateLightingFromSettings() {
+        let settings = this.minecraft.settings;
+
+        // Sun Light
+        if (!settings.enableDayNightLighting) {
+            this.ambientLight.intensity = settings.ambientIntensity;
+            this.overlayAmbientLight.intensity = settings.ambientIntensity;
+            this.sunLight.intensity = settings.sunIntensity;
+            this.overlaySunLight.intensity = settings.sunIntensity;
+        }
+
+        this.sunLight.castShadow = settings.sunCastShadow;
+        if (this.sunLightHelper) {
+            this.sunLightHelper.visible = settings.showSunLightHelper;
+        }
+
+        // Dynamic Lights (Torches)
+        this.dynamicLights.forEach(light => {
+            light.intensity = settings.torchIntensity;
+            light.distance = settings.torchDistance;
+            light.castShadow = settings.torchCastShadow;
+        });
+
+        // Spotlights
+        this.spotLights.forEach(obj => {
+            obj.light.intensity = settings.spotLightIntensity;
+            obj.light.angle = settings.spotLightAngle;
+            obj.light.castShadow = settings.spotLightCastShadow;
+            if (obj.helper) {
+                obj.helper.update();
+                obj.helper.visible = settings.showSpotLightHelper;
+            }
+        });
+    }
+
 }
