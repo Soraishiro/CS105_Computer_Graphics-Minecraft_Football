@@ -84,9 +84,17 @@ export default class ChunkSection {
 
             // Khởi tạo shared material ở scope toàn cục nếu chưa có
             if (!ChunkSection.sharedMaterial) {
+                let terrainBumpMap = renderer.minecraft.getThreeTexture('terrain/terrain_bump.jpg');
+                if (terrainBumpMap) {
+                    terrainBumpMap.magFilter = THREE.NearestFilter;
+                    terrainBumpMap.minFilter = THREE.NearestFilter;
+                }
+
                 ChunkSection.sharedMaterial = new THREE.MeshStandardMaterial({
                     roughness: 1.0,             // Mat dat thi nen nham hoan toan
-                    metalness: 0.0,             // Dua ve 0 vi co/dat khong phai kim loai
+                    metalness: 0.0,             // Dua ve 0 vi co/da khong phai kim loai
+                    bumpMap: terrainBumpMap,
+                    bumpScale: 0.005,
                     side: THREE.FrontSide,
                     transparent: true,
                     alphaTest: 0.1,

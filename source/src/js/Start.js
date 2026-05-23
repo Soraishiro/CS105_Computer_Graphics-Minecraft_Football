@@ -133,6 +133,7 @@ class Start {
       'gui/background.png',
       'gui/icons.png',
       'terrain/terrain_stadium.png',
+      'terrain/terrain_bump.jpg',
       'terrain/sun.png',
       'terrain/moon.png',
       '2026_05_12_ahmad-jamal-24047479.png',
