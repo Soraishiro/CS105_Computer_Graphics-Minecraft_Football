@@ -52,6 +52,21 @@ export default class GuiLightingOptions extends GuiScreen {
             updateLighting();
         }));
 
+        this.buttonList.push(new GuiSliderButton("Moon Light", settings.moonIntensity * 10, 0, 50, leftX, startY + spacing * 5, colWidth, 20, value => {
+            settings.moonIntensity = value / 10;
+            updateLighting();
+        }).setDisplayNameBuilder((name, value) => name + ": " + (value / 10).toFixed(1)));
+
+        this.buttonList.push(new GuiSwitchButton("Moon Shadow", settings.moonCastShadow, leftX, startY + spacing * 6, colWidth, 20, value => {
+            settings.moonCastShadow = value;
+            updateLighting();
+        }));
+
+        this.buttonList.push(new GuiSwitchButton("Moon Helper", settings.showMoonLightHelper, leftX, startY + spacing * 7, colWidth, 20, value => {
+            settings.showMoonLightHelper = value;
+            updateLighting();
+        }));
+
         // --- Column 2 (Right: Torches & Spotlights) ---
         this.buttonList.push(new GuiSliderButton("Torch Light", settings.torchIntensity * 10, 0, 100, rightX, startY, colWidth, 20, value => {
             settings.torchIntensity = value / 10;

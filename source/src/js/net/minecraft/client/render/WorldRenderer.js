@@ -86,7 +86,7 @@ export default class WorldRenderer {
         this.overlayAmbientLight = new THREE.AmbientLight(0xffffff, 1.2);
         this.overlay.add(this.overlayAmbientLight);
 
-        this.overlaySunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
+        this.overlaySunLight = new THREE.DirectionalLight(0xfff4e0, 0.1);
         this.overlay.add(this.overlaySunLight);
         this.overlay.add(this.overlaySunLight.target);
 
@@ -110,6 +110,28 @@ export default class WorldRenderer {
         // Helper cho shadow camera của sunlight
         this.sunLightHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
         this.scene.add(this.sunLightHelper);
+
+        this.overlayMoonLight = new THREE.DirectionalLight(0x88bbff, 0.5);
+        this.overlay.add(this.overlayMoonLight);
+        this.overlay.add(this.overlayMoonLight.target);
+
+        this.moonLight = new THREE.DirectionalLight(0x88bbff, 1.0);
+        this.moonLight.shadow.mapSize.width = 2048;
+        this.moonLight.shadow.mapSize.height = 2048;
+        this.moonLight.shadow.camera.near = 0.5;
+        this.moonLight.shadow.camera.far = 500;
+
+        this.moonLight.shadow.camera.left = -d;
+        this.moonLight.shadow.camera.right = d;
+        this.moonLight.shadow.camera.top = d;
+        this.moonLight.shadow.camera.bottom = -d;
+        this.moonLight.shadow.camera.updateProjectionMatrix();
+
+        this.scene.add(this.moonLight);
+        this.scene.add(this.moonLight.target);
+
+        this.moonLightHelper = new THREE.CameraHelper(this.moonLight.shadow.camera);
+        this.scene.add(this.moonLightHelper);
 
         // Bo quan ly Event-driven PointLight
         this.dynamicLights = new Map();
@@ -554,11 +576,35 @@ export default class WorldRenderer {
         this.sunLight.shadow.camera.lookAt(targetPos);
         this.sunLight.shadow.camera.updateMatrixWorld();
 
+        // ── Sync DirectionalLight (Moon) ──────────
+        const moonTheta = angle * Math.PI * 2 - Math.PI / 2;
+        this.moonLight.position.set(
+            this.camera.position.x,
+            Math.sin(moonTheta) * 200 + this.camera.position.y,
+            this.camera.position.z - Math.cos(moonTheta) * 200
+        );
+        this.moonLight.target.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        this.moonLight.target.updateMatrixWorld();
+        this.moonLight.updateMatrixWorld();
+
+        this.moonLight.shadow.camera.position.setFromMatrixPosition(this.moonLight.matrixWorld);
+        const moonTargetPos = new THREE.Vector3().setFromMatrixPosition(this.moonLight.target.matrixWorld);
+        this.moonLight.shadow.camera.lookAt(moonTargetPos);
+        this.moonLight.shadow.camera.updateMatrixWorld();
+
         if (this.sunLightHelper) {
             this.sunLightHelper.update();
             this.sunLightHelper.updateMatrixWorld(true);
             if (this.minecraft.settings) {
                 this.sunLightHelper.visible = this.minecraft.settings.showSunLightHelper;
+            }
+        }
+
+        if (this.moonLightHelper) {
+            this.moonLightHelper.update();
+            this.moonLightHelper.updateMatrixWorld(true);
+            if (this.minecraft.settings) {
+                this.moonLightHelper.visible = this.minecraft.settings.showMoonLightHelper;
             }
         }
 
@@ -573,9 +619,10 @@ export default class WorldRenderer {
 
         if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
             this.sunLight.intensity = brightness * 1.2;
+            this.moonLight.intensity = (1.0 - brightness) * this.minecraft.settings.moonIntensity;
             this.ambientLight.intensity = 0.15 + brightness * 0.25;
         }
-        this.overlayAmbientLight.intensity = 0.01 + brightness * 0.25;
+        this.overlayAmbientLight.intensity = 0.1 + brightness * 0.15;
 
         // Mau anh sang theo gio trong ngay
         if (brightness > 0.5) {
@@ -1009,12 +1056,17 @@ export default class WorldRenderer {
             this.ambientLight.intensity = settings.ambientIntensity;
             this.overlayAmbientLight.intensity = settings.ambientIntensity;
             this.sunLight.intensity = settings.sunIntensity;
-            // this.overlaySunLight.intensity = settings.sunIntensity;
+            this.moonLight.intensity = settings.moonIntensity;
         }
 
         this.sunLight.castShadow = settings.sunCastShadow;
         if (this.sunLightHelper) {
             this.sunLightHelper.visible = settings.showSunLightHelper;
+        }
+
+        this.moonLight.castShadow = settings.moonCastShadow;
+        if (this.moonLightHelper) {
+            this.moonLightHelper.visible = settings.showMoonLightHelper;
         }
 
         // Dynamic Lights (Torches)
