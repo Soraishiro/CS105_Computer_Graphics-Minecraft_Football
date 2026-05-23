@@ -30,7 +30,7 @@ export default class GameSettings {
         this.sunCastShadow = false;
         this.spotLightIntensity = 5;
         this.spotLightDistance = 100;
-        this.spotLightAngle = 30; // degrees, convert to rad where needed
+        this.spotLightAngle = 30; // degrees
         this.spotLightCastShadow = false;
         this.showSpotLightHelper = false;
     }

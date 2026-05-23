@@ -73,9 +73,8 @@ export default class GuiLightingOptions extends GuiScreen {
             updateLighting();
         }).setDisplayNameBuilder((name, value) => name + ": " + (value / 10).toFixed(1)));
 
-        let initialAngleDeg = Math.round(settings.spotLightAngle * 180 / Math.PI);
-        this.buttonList.push(new GuiSliderButton("Spot Angle", initialAngleDeg, 0, 90, rightX, startY + spacing * 4, colWidth, 20, value => {
-            settings.spotLightAngle = value * Math.PI / 180;
+        this.buttonList.push(new GuiSliderButton("Spot Angle", settings.spotLightAngle, 0, 90, rightX, startY + spacing * 4, colWidth, 20, value => {
+            settings.spotLightAngle = value;
             updateLighting();
         }).setDisplayNameBuilder((name, value) => name + ": " + value + ""));
 

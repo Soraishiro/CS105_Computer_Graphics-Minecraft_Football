@@ -91,7 +91,6 @@ export default class WorldRenderer {
         this.overlay.add(this.overlaySunLight.target);
 
         this.sunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
-        this.sunLight.castShadow = true;
         this.sunLight.shadow.mapSize.width = 2048;
         this.sunLight.shadow.mapSize.height = 2048;
         this.sunLight.shadow.camera.near = 0.5;
@@ -575,8 +574,8 @@ export default class WorldRenderer {
         if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
             this.sunLight.intensity = brightness * 1.2;
             this.ambientLight.intensity = 0.15 + brightness * 0.25;
-            this.overlayAmbientLight.intensity = 0.1 + brightness * 0.25;
         }
+        this.overlayAmbientLight.intensity = 0.01 + brightness * 0.25;
 
         // Mau anh sang theo gio trong ngay
         if (brightness > 0.5) {
@@ -925,11 +924,9 @@ export default class WorldRenderer {
         let key = `${x},${y},${z}`;
         if (this.spotLights.has(key)) return;
 
-        console.log("Added Spotlight");
-
         let spotLight = new THREE.SpotLight(0xffffff, this.minecraft.settings.spotLightIntensity, this.minecraft.settings.spotLightDistance);
         spotLight.position.set(x + 0.5, y + 0.5, z + 0.5);
-        spotLight.angle = this.minecraft.settings.spotLightAngle;
+        spotLight.angle = THREE.MathUtils.degToRad(this.minecraft.settings.spotLightAngle);
         spotLight.penumbra = 0.5;
         spotLight.castShadow = this.minecraft.settings.spotLightCastShadow;
         spotLight.shadow.mapSize.width = 1024;
@@ -1012,7 +1009,7 @@ export default class WorldRenderer {
             this.ambientLight.intensity = settings.ambientIntensity;
             this.overlayAmbientLight.intensity = settings.ambientIntensity;
             this.sunLight.intensity = settings.sunIntensity;
-            this.overlaySunLight.intensity = settings.sunIntensity;
+            // this.overlaySunLight.intensity = settings.sunIntensity;
         }
 
         this.sunLight.castShadow = settings.sunCastShadow;
@@ -1030,7 +1027,7 @@ export default class WorldRenderer {
         // Spotlights
         this.spotLights.forEach(obj => {
             obj.light.intensity = settings.spotLightIntensity;
-            obj.light.angle = settings.spotLightAngle;
+            obj.light.angle = THREE.MathUtils.degToRad(settings.spotLightAngle);
             obj.light.castShadow = settings.spotLightCastShadow;
             if (obj.helper) {
                 obj.helper.update();
