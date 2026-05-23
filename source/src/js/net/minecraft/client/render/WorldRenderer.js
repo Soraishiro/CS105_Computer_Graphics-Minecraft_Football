@@ -619,8 +619,8 @@ export default class WorldRenderer {
 
         if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
             this.sunLight.intensity = brightness * 1.2;
-            this.moonLight.intensity = (1.0 - brightness) * this.minecraft.settings.moonIntensity;
-            this.ambientLight.intensity = 0.15 + brightness * 0.25;
+            this.moonLight.intensity = (1.0 - brightness) * 0.4; // Tự động set max là 0.4 (thay vì 1.2 như mặt trời)
+            this.ambientLight.intensity = 0.1 + brightness * 0.25;
         }
         this.overlayAmbientLight.intensity = 0.1 + brightness * 0.15;
 
