@@ -34,14 +34,17 @@ export default class EntityRenderer {
                 if (child.material && child.material.type === "MeshBasicMaterial") {
                     child.geometry.computeVertexNormals();
 
+                    let oldMaterial = child.material;
                     child.material = new THREE.MeshStandardMaterial({
-                        map: child.material.map,
+                        map: oldMaterial.map,
                         color: 0xffffff,
                         transparent: true,
                         alphaTest: 0.1,
                         vertexColors: false,
                         roughness: 0.8
                     });
+
+                    oldMaterial.dispose();
                 }
             }
         });

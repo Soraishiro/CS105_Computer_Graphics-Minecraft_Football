@@ -163,7 +163,9 @@ export default class WorldRenderer {
             sunIntensity: 1.2,
             torchIntensity: 1.5,
             torchDistance: 15,
-            showSunLightHelper: true
+            showSunLightHelper: true,
+            torchCastShadow: false,
+            sunCastShadow: true
         };
 
         const gui = new GUI({ title: 'Lighting Control' });
@@ -204,6 +206,9 @@ export default class WorldRenderer {
                 this.sunLightHelper.visible = value;
             }
         });
+        sunFolder.add(this.lightingParams, 'sunCastShadow').name('Cast Shadow').onChange((value) => {
+            this.sunLight.castShadow = value;
+        });
 
         const torchFolder = gui.addFolder('All Torches');
         torchFolder.add(this.lightingParams, 'torchIntensity', 0, 10).name('Intensity').onChange((value) => {
@@ -211,6 +216,9 @@ export default class WorldRenderer {
         });
         torchFolder.add(this.lightingParams, 'torchDistance', 5, 50).name('Distance').onChange((value) => {
             this.dynamicLights.forEach(light => light.distance = value);
+        });
+        torchFolder.add(this.lightingParams, 'torchCastShadow').name('Cast Shadow').onChange((value) => {
+            this.dynamicLights.forEach(light => light.castShadow = value);
         });
         // ------------------------------------------------
     }
@@ -971,7 +979,7 @@ export default class WorldRenderer {
         pointLight.position.set(x + 0.5, y + 0.7, z + 0.5); // Nâng cao một chút để tránh kẹt vào mesh của đuốc
 
         // Bật bóng đổ đa hướng (Rất nặng máy nhưng cần thiết cho đồ án)
-        pointLight.castShadow = true;
+        pointLight.castShadow = this.lightingParams ? this.lightingParams.torchCastShadow : false;
         pointLight.shadow.mapSize.width = 512; // Giữ ở mức trung bình để đỡ lag
         pointLight.shadow.mapSize.height = 512;
         // pointLight.shadow.camera.near = 0.1;

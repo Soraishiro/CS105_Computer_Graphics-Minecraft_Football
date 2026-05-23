@@ -81,16 +81,21 @@ export default class ChunkSection {
 
             // Nang cap rieng cho Chunk thanh MeshStandardMaterial de nhan bong
             mesh.geometry.computeVertexNormals();
-            mesh.material = new THREE.MeshStandardMaterial({
-                map: mesh.material.map,
-                roughness: 1.0,             // Mat dat thi nen nham hoan toan
-                metalness: 0.0,             // Dua ve 0 vi co/dat khong phai kim loai
-                side: THREE.FrontSide,
-                transparent: true,
-                alphaTest: 0.1,
-                depthTest: true,
-                vertexColors: true
-            });
+
+            // Khởi tạo shared material ở scope toàn cục nếu chưa có
+            if (!ChunkSection.sharedMaterial) {
+                ChunkSection.sharedMaterial = new THREE.MeshStandardMaterial({
+                    roughness: 1.0,             // Mat dat thi nen nham hoan toan
+                    metalness: 0.0,             // Dua ve 0 vi co/dat khong phai kim loai
+                    side: THREE.FrontSide,
+                    transparent: true,
+                    alphaTest: 0.1,
+                    depthTest: true,
+                    vertexColors: true
+                });
+            }
+            ChunkSection.sharedMaterial.map = mesh.material.map;
+            mesh.material = ChunkSection.sharedMaterial;
 
             // Cac khoi trong suot (nhu Duoc, Nuoc, Kinh) khong do bong de tranh loi tu che khuat anh sang cua chinh minh!
             mesh.castShadow = !isTranslucentRenderPhase;
