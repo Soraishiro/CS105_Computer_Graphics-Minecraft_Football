@@ -47,6 +47,14 @@ export default class Block {
         return this.getTransparency() > 0.0;
     }
 
+    isEmissive() {
+        return false;
+    }
+
+    getEmissiveMultiplier() {
+        return 1.5; // Hệ số nhân màu để ép độ sáng (giá trị > 1.0 sẽ làm màu sáng chói lên)
+    }
+
     shouldRenderFace(world, x, y, z, face) {
         let typeId = world.getBlockAtFace(x, y, z, face);
         if (typeId === 0) {

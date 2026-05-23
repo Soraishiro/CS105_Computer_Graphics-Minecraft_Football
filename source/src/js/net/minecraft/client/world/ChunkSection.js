@@ -58,9 +58,10 @@ export default class ChunkSection {
         let ambientOcclusion = this.world.minecraft.settings.ambientOcclusion;
         let tessellator = renderer.blockRenderer.tessellator;
 
-        // Two render phases for solid and translucent
-        for (let i = 0; i < 2; i++) {
+        // Three render phases: solid, translucent, emissive
+        for (let i = 0; i < 3; i++) {
             let isTranslucentRenderPhase = i === 1;
+            let isEmissiveRenderPhase = i === 2;
 
             // Start drawing chunk section
             tessellator.startDrawing();
@@ -76,8 +77,16 @@ export default class ChunkSection {
                             let absoluteZ = this.z * ChunkSection.SIZE + z;
 
                             let block = Block.getById(typeId);
-                            if (block === null || block.isTranslucent() !== isTranslucentRenderPhase) {
+                            if (block === null) {
                                 continue;
+                            }
+
+                            if (isEmissiveRenderPhase) {
+                                if (!block.isEmissive()) continue;
+                            } else if (isTranslucentRenderPhase) {
+                                if (!block.isTranslucent() || block.isEmissive()) continue;
+                            } else {
+                                if (block.isTranslucent() || block.isEmissive()) continue;
                             }
 
                             renderer.blockRenderer.renderBlock(this.world, block, ambientOcclusion, absoluteX, absoluteY, absoluteZ);
@@ -112,12 +121,35 @@ export default class ChunkSection {
                     vertexColors: true
                 });
             }
-            ChunkSection.sharedMaterial.map = mesh.material.map;
-            mesh.material = ChunkSection.sharedMaterial;
+
+            let material;
+            if (isEmissiveRenderPhase) {
+                if (!ChunkSection.emissiveMaterial) {
+                    ChunkSection.emissiveMaterial = new THREE.MeshBasicMaterial({
+                        map: mesh.material.map,
+                        side: THREE.FrontSide,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        depthTest: true,
+                        vertexColors: true
+                    });
+                }
+                ChunkSection.emissiveMaterial.map = mesh.material.map;
+                material = ChunkSection.emissiveMaterial;
+            } else {
+                ChunkSection.sharedMaterial.map = mesh.material.map;
+                material = ChunkSection.sharedMaterial;
+            }
+            mesh.material = material;
 
             // Cac khoi trong suot (nhu Duoc, Nuoc, Kinh) khong do bong de tranh loi tu che khuat anh sang cua chinh minh!
-            mesh.castShadow = !isTranslucentRenderPhase;
-            mesh.receiveShadow = true;
+            if (isEmissiveRenderPhase) {
+                mesh.castShadow = false;
+                mesh.receiveShadow = false;
+            } else {
+                mesh.castShadow = !isTranslucentRenderPhase;
+                mesh.receiveShadow = true;
+            }
         }
     }
 

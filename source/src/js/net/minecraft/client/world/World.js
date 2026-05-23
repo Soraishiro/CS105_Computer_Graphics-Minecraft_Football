@@ -280,13 +280,20 @@ export default class World {
         // Rebuild chunk
         this.onBlockChanged(x, y, z);
 
-        // Event-driven PointLight
+        // Event-driven PointLight & SpotLight
         if (this.minecraft.worldRenderer) {
             // 50 la ID cua Block Torch
             if (type === 50 && oldType !== 50) {
                 this.minecraft.worldRenderer.addDynamicLight(x, y, z, 0xffcc55, 1.5, 15);
             } else if (type !== 50 && oldType === 50) {
                 this.minecraft.worldRenderer.removeDynamicLight(x, y, z);
+            }
+
+            // 116 la BlockRedstoneLampOn
+            if (type === 116 && oldType !== 116) {
+                this.minecraft.worldRenderer.addSpotLight(x, y, z);
+            } else if (type !== 116 && oldType === 116) {
+                this.minecraft.worldRenderer.removeSpotLight(x, y, z);
             }
         }
     }

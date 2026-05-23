@@ -52,6 +52,8 @@ export default class WorldRenderer {
 
         this.lastHitResult = null;
 
+        this.spotLights = new Map();
+
         this.initialize();
     }
 
@@ -140,32 +142,21 @@ export default class WorldRenderer {
         }));
         this.scene.add(this.blockHitBox);
 
-        // --- TEST SETUP CHO SPOTLIGHT ---
-        let testSpotLight = new THREE.SpotLight(0xffffff, 5);
-        testSpotLight.position.set(-3, 70, 5);
-        testSpotLight.target.position.set(0, 64.5, 5);
-        testSpotLight.angle = Math.PI / 6;
-        testSpotLight.penumbra = 0.5;
-        testSpotLight.castShadow = true;
-        testSpotLight.shadow.mapSize.width = 1024;
-        testSpotLight.shadow.mapSize.height = 1024;
-        testSpotLight.shadow.bias = -0.0001;
-        this.scene.add(testSpotLight);
-        this.scene.add(testSpotLight.target);
-        // Hiển thị Helper để dễ nhìn thấy tia sáng của SpotLight
-        this.spotLightHelper = new THREE.SpotLightHelper(testSpotLight);
-        this.scene.add(this.spotLightHelper);
-
         // --- GUI Control cho toàn bộ Hệ thống Ánh sáng ---
         this.lightingParams = {
             enableDayNightLighting: true,
             ambientIntensity: 0.4,
             sunIntensity: 1.2,
-            torchIntensity: 1.5,
+            torchIntensity: 2.5,
             torchDistance: 15,
-            showSunLightHelper: true,
+            showSunLightHelper: false,
             torchCastShadow: false,
-            sunCastShadow: true
+            sunCastShadow: false,
+            spotLightIntensity: 5,
+            spotLightDistance: 100,
+            spotLightAngle: Math.PI / 6,
+            spotLightCastShadow: false,
+            showSpotLightHelper: false
         };
 
         const gui = new GUI({ title: 'Lighting Control' });
@@ -219,6 +210,25 @@ export default class WorldRenderer {
         });
         torchFolder.add(this.lightingParams, 'torchCastShadow').name('Cast Shadow').onChange((value) => {
             this.dynamicLights.forEach(light => light.castShadow = value);
+        });
+
+        const spotFolder = gui.addFolder('Stadium Spotlights');
+        spotFolder.add(this.lightingParams, 'spotLightIntensity', 0, 20).name('Intensity').onChange((value) => {
+            this.spotLights.forEach(obj => obj.light.intensity = value);
+        });
+        spotFolder.add(this.lightingParams, 'spotLightAngle', 0, Math.PI / 2).name('Angle').onChange((value) => {
+            this.spotLights.forEach(obj => {
+                obj.light.angle = value;
+                if (obj.helper) obj.helper.update();
+            });
+        });
+        spotFolder.add(this.lightingParams, 'spotLightCastShadow').name('Cast Shadow').onChange((value) => {
+            this.spotLights.forEach(obj => obj.light.castShadow = value);
+        });
+        spotFolder.add(this.lightingParams, 'showSpotLightHelper').name('Show Helper').onChange((value) => {
+            this.spotLights.forEach(obj => {
+                if (obj.helper) obj.helper.visible = value;
+            });
         });
         // ------------------------------------------------
     }
@@ -999,6 +1009,63 @@ export default class WorldRenderer {
         }
     }
 
+    addSpotLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.spotLights.has(key)) return;
+
+        console.log("Added Spotlight");
+
+        let spotLight = new THREE.SpotLight(0xffffff, this.lightingParams.spotLightIntensity, this.lightingParams.spotLightDistance);
+        spotLight.position.set(x + 0.5, y + 0.5, z + 0.5);
+        spotLight.angle = this.lightingParams.spotLightAngle;
+        spotLight.penumbra = 0.5;
+        spotLight.castShadow = this.lightingParams.spotLightCastShadow;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.bias = -0.0001;
+
+        let targetObj = new THREE.Object3D();
+
+        // Hướng về mặt người chơi lúc đặt block
+        let player = this.minecraft.player;
+        if (player) {
+            targetObj.position.set(
+                player.x,
+                player.y + player.getEyeHeight(),
+                player.z
+            );
+        } else {
+            targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+        }
+
+        spotLight.target = targetObj;
+
+        this.scene.add(targetObj);
+        this.scene.add(spotLight);
+
+        let helper = new THREE.SpotLightHelper(spotLight);
+        helper.visible = this.lightingParams.showSpotLightHelper;
+        this.scene.add(helper);
+
+        // Bắt buộc cập nhật ma trận để Helper nhận diện đúng hướng ngay lúc vừa tạo
+        targetObj.updateMatrixWorld();
+        spotLight.updateMatrixWorld();
+        helper.update();
+
+        this.spotLights.set(key, { light: spotLight, target: targetObj, helper: helper });
+    }
+
+    removeSpotLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.spotLights.has(key)) {
+            let obj = this.spotLights.get(key);
+            this.scene.remove(obj.light);
+            this.scene.remove(obj.target);
+            if (obj.helper) this.scene.remove(obj.helper);
+            this.spotLights.delete(key);
+        }
+    }
+
     reset() {
         if (this.minecraft.world !== null) {
             this.scene.remove(this.minecraft.world.group);
@@ -1010,6 +1077,15 @@ export default class WorldRenderer {
                 this.scene.remove(light);
             });
             this.dynamicLights.clear();
+        }
+
+        if (this.spotLights) {
+            this.spotLights.forEach(obj => {
+                this.scene.remove(obj.light);
+                this.scene.remove(obj.target);
+                if (obj.helper) this.scene.remove(obj.helper);
+            });
+            this.spotLights.clear();
         }
 
         this.webRenderer.clear();
