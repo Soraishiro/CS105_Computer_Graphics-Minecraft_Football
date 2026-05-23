@@ -43,6 +43,16 @@ export default class ChunkSection {
 
     rebuild(renderer) {
         this.isModified = false;
+
+        // Dọn dẹp Geometry cũ trước khi tạo lưới mới
+        for (let i = this.group.children.length - 1; i >= 0; i--) {
+            let child = this.group.children[i];
+            this.group.remove(child);
+            if (child.geometry) {
+                child.geometry.dispose(); // Xóa rác VRAM
+            }
+        }
+
         this.group.clear();
 
         let ambientOcclusion = this.world.minecraft.settings.ambientOcclusion;

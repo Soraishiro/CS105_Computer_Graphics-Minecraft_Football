@@ -1003,6 +1003,15 @@ export default class WorldRenderer {
         if (this.minecraft.world !== null) {
             this.scene.remove(this.minecraft.world.group);
         }
+
+        // Dọn dẹp toàn bộ đèn động (đuốc) khi thoát ra Title
+        if (this.dynamicLights) {
+            this.dynamicLights.forEach(light => {
+                this.scene.remove(light);
+            });
+            this.dynamicLights.clear();
+        }
+
         this.webRenderer.clear();
         this.overlay.clear();
     }
