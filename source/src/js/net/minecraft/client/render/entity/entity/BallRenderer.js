@@ -12,7 +12,9 @@ export default class BallRenderer extends EntityRenderer {
     init() {
         this.geometry = new THREE.SphereGeometry(0.25, 16, 16);
 
-        let ballTexture = this.worldRenderer.minecraft.getThreeTexture('entity/football.png');
+        let ballTexture = this.worldRenderer.minecraft.getThreeTexture('entity/football_2.png');
+        let ballBumpMap = this.worldRenderer.minecraft.getThreeTexture('entity/football_bump.png');
+
         if (ballTexture) {
             ballTexture.magFilter = THREE.NearestFilter;
             ballTexture.minFilter = THREE.NearestFilter;
@@ -21,6 +23,8 @@ export default class BallRenderer extends EntityRenderer {
         // MeshStandardMaterial de nhan anh sang tu AmbientLight / DirectionalLight / SpotLight
         this.material = new THREE.MeshStandardMaterial({
             map: ballTexture,
+            bumpMap: ballBumpMap,
+            bumpScale: 0.05,
             color: 0xFFFFFF,
             roughness: 0.6,
             metalness: 0.1

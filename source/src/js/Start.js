@@ -148,6 +148,8 @@ class Start {
       'gui/title/background/panorama_5.png',
       'gui/container/creative.png',
       'entity/football.png',
+      'entity/football_2.png',
+      'entity/football_bump.png',
     ]).then((resources) => {
       return this.buildStadiumAtlas(resources);
     }).then((resources) => {
