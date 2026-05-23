@@ -77,6 +77,8 @@ class Start {
       237: 'stadium_assets/37_crowd_block_dark.png',
       238: 'stadium_assets/38_decorative_banner_block.png',
       239: 'stadium_assets/39_soccer_ball_texture.png',
+      240: 'stadium_assets/40_redstone_lamp.png',
+      241: 'stadium_assets/41_redstone_lamp_on.png',
     };
 
     // Get the base atlas canvas (256×256)
@@ -133,6 +135,7 @@ class Start {
       'gui/background.png',
       'gui/icons.png',
       'terrain/terrain_stadium.png',
+      'terrain/terrain_bump.jpg',
       'terrain/sun.png',
       'terrain/moon.png',
       '2026_05_12_ahmad-jamal-24047479.png',
@@ -148,6 +151,8 @@ class Start {
       'gui/title/background/panorama_5.png',
       'gui/container/creative.png',
       'entity/football.png',
+      'entity/football_2.png',
+      'entity/football_bump.png',
     ]).then((resources) => {
       return this.buildStadiumAtlas(resources);
     }).then((resources) => {

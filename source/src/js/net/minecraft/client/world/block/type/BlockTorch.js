@@ -31,8 +31,20 @@ export default class BlockTorch extends Block {
         return false;
     }
 
+    getTransparency() {
+        return 1.0;
+    }
+
     isTranslucent() {
         return true;
+    }
+
+    isEmissive() {
+        return true;
+    }
+
+    getEmissiveMultiplier() {
+        return 1; // Độ sáng siêu cấp của LampStone (Màu sẽ trắng hơn và rực rỡ hơn)
     }
 
     getRenderType() {

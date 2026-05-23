@@ -39,4 +39,6 @@ export const StadiumTextures = {
     CROWD_BLOCK_DARK: 237,
     DECORATIVE_BANNER_BLOCK: 238,
     SOCCER_BALL_TEXTURE: 239,
+    REDSTONE_LAMP: 240,
+    REDSTONE_LAMP_ON: 241,
 };

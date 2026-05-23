@@ -7,6 +7,7 @@ import ChunkSection from "../world/ChunkSection.js";
 import Random from "../../util/Random.js";
 import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
+import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
 
 export default class WorldRenderer {
 
@@ -51,6 +52,8 @@ export default class WorldRenderer {
 
         this.lastHitResult = null;
 
+        this.spotLights = new Map();
+
         this.initialize();
     }
 
@@ -74,6 +77,43 @@ export default class WorldRenderer {
         // Create overlay for first person model rendering
         this.overlay = new THREE.Scene();
         this.overlay.matrixAutoUpdate = false;
+
+        // Lighting cho scene chính
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.scene.add(this.ambientLight);
+
+        // Lighting cho overlay scene (góc nhìn thứ nhất)
+        this.overlayAmbientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.overlay.add(this.overlayAmbientLight);
+
+        this.overlaySunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
+        this.overlay.add(this.overlaySunLight);
+        this.overlay.add(this.overlaySunLight.target);
+
+        this.sunLight = new THREE.DirectionalLight(0xfff4e0, 1.0);
+        this.sunLight.castShadow = true;
+        this.sunLight.shadow.mapSize.width = 2048;
+        this.sunLight.shadow.mapSize.height = 2048;
+        this.sunLight.shadow.camera.near = 0.5;
+        this.sunLight.shadow.camera.far = 500;
+
+        // Mo rong vung tinh toan bong cho DirectionalLight (vi mac dinh chi co 5x5)
+        let d = 100;
+        this.sunLight.shadow.camera.left = -d;
+        this.sunLight.shadow.camera.right = d;
+        this.sunLight.shadow.camera.top = d;
+        this.sunLight.shadow.camera.bottom = -d;
+        this.sunLight.shadow.camera.updateProjectionMatrix();
+
+        this.scene.add(this.sunLight);
+        this.scene.add(this.sunLight.target);
+
+        // Helper cho shadow camera của sunlight
+        this.sunLightHelper = new THREE.CameraHelper(this.sunLight.shadow.camera);
+        this.scene.add(this.sunLightHelper);
+
+        // Bo quan ly Event-driven PointLight
+        this.dynamicLights = new Map();
 
         // Create web renderer
         this.webRenderer = new THREE.WebGLRenderer({
@@ -101,6 +141,8 @@ export default class WorldRenderer {
             color: 0x000000
         }));
         this.scene.add(this.blockHitBox);
+
+        // GUI Removed - Migrated to GuiLightingOptions    
     }
 
     render(partialTicks) {
@@ -193,7 +235,7 @@ export default class WorldRenderer {
         let brightnessAtPosition = this.minecraft.world.getLightBrightnessForEntity(player);
         let renderDistance = this.minecraft.settings.viewDistance / 32.0;
         let fogBrightness = brightnessAtPosition * (1.0 - renderDistance) + renderDistance;
-        
+
         // Sanity check for NaN
         if (isNaN(fogBrightness)) fogBrightness = 1.0;
         if (isNaN(this.fogBrightness)) this.fogBrightness = fogBrightness;
@@ -494,6 +536,56 @@ export default class WorldRenderer {
         // Rotate sky cycle
         let angle = this.minecraft.world.getCelestialAngle(partialTicks);
         this.cycleGroup.rotation.set(angle * Math.PI * 2 + Math.PI / 2, 0, 0);
+
+        // ── Sync DirectionalLight (Sun) voi chu ky ngay/dem ──────────
+        // Dung cung theta voi cycleGroup de huong sang khop voi vi tri mat troi tren troi
+        const theta = angle * Math.PI * 2 + Math.PI / 2;
+        this.sunLight.position.set(
+            this.camera.position.x,
+            Math.sin(theta) * 200 + this.camera.position.y,
+            this.camera.position.z - Math.cos(theta) * 200
+        );
+        this.sunLight.target.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+        this.sunLight.target.updateMatrixWorld();
+        this.sunLight.updateMatrixWorld();
+
+        // Đồng bộ vị trí và góc nhìn của shadow camera thủ công để helper cập nhật đúng
+        this.sunLight.shadow.camera.position.setFromMatrixPosition(this.sunLight.matrixWorld);
+        const targetPos = new THREE.Vector3().setFromMatrixPosition(this.sunLight.target.matrixWorld);
+        this.sunLight.shadow.camera.lookAt(targetPos);
+        this.sunLight.shadow.camera.updateMatrixWorld();
+
+        if (this.sunLightHelper) {
+            this.sunLightHelper.update();
+            this.sunLightHelper.updateMatrixWorld(true);
+            if (this.minecraft.settings) {
+                this.sunLightHelper.visible = this.minecraft.settings.showSunLightHelper;
+            }
+        }
+
+        if (this.spotLightHelper) {
+            this.spotLightHelper.light.target.updateMatrixWorld();
+            this.spotLightHelper.update();
+            this.spotLightHelper.updateMatrixWorld(true);
+        }
+
+        // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
+        let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
+
+        if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
+            this.sunLight.intensity = brightness * 1.2;
+            this.ambientLight.intensity = 0.15 + brightness * 0.25;
+            this.overlayAmbientLight.intensity = 0.1 + brightness * 0.25;
+        }
+
+        // Mau anh sang theo gio trong ngay
+        if (brightness > 0.5) {
+            this.sunLight.color.set(0xfff4e0);  // ban ngay: vang am
+        } else if (brightness > 0.05) {
+            this.sunLight.color.set(0xff8844);  // hoang hon / binh minh: cam do
+        } else {
+            this.sunLight.intensity = 0;         // ban dem: tat hoan toan
+        }
     }
 
     setupFog(x, z, inWater, partialTicks) {
@@ -797,11 +889,154 @@ export default class WorldRenderer {
         stack.rotateX(MathHelper.toRadians(pitch));
     }
 
+    addDynamicLight(x, y, z, color, intensity, distance) {
+        let key = `${x},${y},${z}`;
+        if (this.dynamicLights.has(key)) return;
+
+        // Su dung thong so tu GUI neu co, neu khong thi dung thong so mac dinh
+        let finalIntensity = this.minecraft.settings ? this.minecraft.settings.torchIntensity : intensity;
+        let finalDistance = this.minecraft.settings ? this.minecraft.settings.torchDistance : distance;
+
+        let pointLight = new THREE.PointLight(color, finalIntensity, finalDistance);
+        pointLight.position.set(x + 0.5, y + 0.5, z + 0.5);
+
+        // Turn on shadow map
+        pointLight.castShadow = this.minecraft.settings ? this.minecraft.settings.torchCastShadow : false;
+        pointLight.shadow.mapSize.width = 512; // Giữ ở mức trung bình để đỡ lag
+        pointLight.shadow.mapSize.height = 512;
+        // pointLight.shadow.camera.near = 0.1;
+        pointLight.shadow.camera.far = finalDistance;
+        pointLight.shadow.bias = -0.0001; // Tránh hiện tượng shadow acne
+
+        this.scene.add(pointLight);
+        this.dynamicLights.set(key, pointLight);
+    }
+
+    removeDynamicLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.dynamicLights.has(key)) {
+            let light = this.dynamicLights.get(key);
+            this.scene.remove(light);
+            this.dynamicLights.delete(key);
+        }
+    }
+
+    addSpotLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.spotLights.has(key)) return;
+
+        console.log("Added Spotlight");
+
+        let spotLight = new THREE.SpotLight(0xffffff, this.minecraft.settings.spotLightIntensity, this.minecraft.settings.spotLightDistance);
+        spotLight.position.set(x + 0.5, y + 0.5, z + 0.5);
+        spotLight.angle = this.minecraft.settings.spotLightAngle;
+        spotLight.penumbra = 0.5;
+        spotLight.castShadow = this.minecraft.settings.spotLightCastShadow;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.bias = -0.0001;
+
+        let targetObj = new THREE.Object3D();
+
+        // Hướng về mặt người chơi lúc đặt block
+        let player = this.minecraft.player;
+        if (player) {
+            targetObj.position.set(
+                player.x,
+                player.y + player.getEyeHeight(),
+                player.z
+            );
+        } else {
+            targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+        }
+
+        spotLight.target = targetObj;
+
+        this.scene.add(targetObj);
+        this.scene.add(spotLight);
+
+        let helper = new THREE.SpotLightHelper(spotLight);
+        helper.visible = this.minecraft.settings.showSpotLightHelper;
+        this.scene.add(helper);
+
+        // Bắt buộc cập nhật ma trận để Helper nhận diện đúng hướng ngay lúc vừa tạo
+        targetObj.updateMatrixWorld();
+        spotLight.updateMatrixWorld();
+        helper.update();
+
+        this.spotLights.set(key, { light: spotLight, target: targetObj, helper: helper });
+    }
+
+    removeSpotLight(x, y, z) {
+        let key = `${x},${y},${z}`;
+        if (this.spotLights.has(key)) {
+            let obj = this.spotLights.get(key);
+            this.scene.remove(obj.light);
+            this.scene.remove(obj.target);
+            if (obj.helper) this.scene.remove(obj.helper);
+            this.spotLights.delete(key);
+        }
+    }
+
     reset() {
         if (this.minecraft.world !== null) {
             this.scene.remove(this.minecraft.world.group);
         }
+
+        // Dọn dẹp toàn bộ đèn động (đuốc) khi thoát ra Title
+        if (this.dynamicLights) {
+            this.dynamicLights.forEach(light => {
+                this.scene.remove(light);
+            });
+            this.dynamicLights.clear();
+        }
+
+        if (this.spotLights) {
+            this.spotLights.forEach(obj => {
+                this.scene.remove(obj.light);
+                this.scene.remove(obj.target);
+                if (obj.helper) this.scene.remove(obj.helper);
+            });
+            this.spotLights.clear();
+        }
+
         this.webRenderer.clear();
         this.overlay.clear();
     }
+
+    updateLightingFromSettings() {
+        let settings = this.minecraft.settings;
+
+        // Sun Light
+        if (!settings.enableDayNightLighting) {
+            this.ambientLight.intensity = settings.ambientIntensity;
+            this.overlayAmbientLight.intensity = settings.ambientIntensity;
+            this.sunLight.intensity = settings.sunIntensity;
+            this.overlaySunLight.intensity = settings.sunIntensity;
+        }
+
+        this.sunLight.castShadow = settings.sunCastShadow;
+        if (this.sunLightHelper) {
+            this.sunLightHelper.visible = settings.showSunLightHelper;
+        }
+
+        // Dynamic Lights (Torches)
+        this.dynamicLights.forEach(light => {
+            light.intensity = settings.torchIntensity;
+            light.distance = settings.torchDistance;
+            light.castShadow = settings.torchCastShadow;
+        });
+
+        // Spotlights
+        this.spotLights.forEach(obj => {
+            obj.light.intensity = settings.spotLightIntensity;
+            obj.light.angle = settings.spotLightAngle;
+            obj.light.castShadow = settings.spotLightCastShadow;
+            if (obj.helper) {
+                obj.helper.update();
+                obj.helper.visible = settings.showSpotLightHelper;
+            }
+        });
+    }
+
 }

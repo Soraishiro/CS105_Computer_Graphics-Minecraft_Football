@@ -9,6 +9,7 @@ export default class Tessellator {
             alphaTest: 0.1,
             depthTest: true,
             vertexColors: true
+
         });
 
         this.red = 0;
@@ -101,7 +102,6 @@ export default class Tessellator {
             index.push(i * verticesPerFace + 2);
         }
         geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(index), 1));
-
         let mesh = new THREE.Mesh(geometry, this.material);
         group.matrixAutoUpdate = false;
         group.add(mesh);
