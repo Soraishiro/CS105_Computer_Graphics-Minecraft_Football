@@ -9,6 +9,7 @@ import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
 import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
 import ParticleRainSplash from "./particle/particle/ParticleRainSplash.js";
+import ModelPlayer from "./model/model/ModelPlayer.js";
 
 export default class WorldRenderer {
 
@@ -155,7 +156,121 @@ export default class WorldRenderer {
         this.weatherGroup.matrixAutoUpdate = false;
         this.scene.add(this.weatherGroup);
 
+        this.setupTrophy();
+        this.setupDatGUI();
+
         this.rendererUpdateCount = 0;
+    }
+
+    setupTrophy() {
+        this.trophy = new THREE.Group();
+
+        let textureTrophy = this.minecraft.getThreeTexture('trophy.png');
+        if (textureTrophy) {
+            textureTrophy.magFilter = THREE.NearestFilter;
+            textureTrophy.minFilter = THREE.NearestFilter;
+        }
+
+        let model = new ModelPlayer();
+        let tess = new Tessellator();
+        tess.bindTexture(textureTrophy);
+        tess.setColor(1, 1, 1);
+
+        let meshGroup = new THREE.Object3D();
+        model.rebuild(tess, meshGroup);
+        model.render(meshGroup, 0, 0, 0, 0, 0, 0);
+
+        meshGroup.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material && child.material.type === "MeshBasicMaterial") {
+                    child.geometry.computeVertexNormals();
+                    let oldMaterial = child.material;
+                    child.material = new THREE.MeshStandardMaterial({
+                        map: oldMaterial.map,
+                        color: 0xffffff,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        vertexColors: false,
+                        roughness: 0.8
+                    });
+                    oldMaterial.dispose();
+                }
+            }
+        });
+
+        let scale = 7.0 / 120.0;
+        meshGroup.scale.set(-scale, -scale, scale);
+        meshGroup.position.set(0, 1.4, 0);
+
+        this.trophy.add(meshGroup);
+
+        this.trophy.position.set(0, 65.5, -20);
+        this.scene.add(this.trophy);
+    }
+
+    setupDatGUI() {
+        this.gui = new GUI();
+        this.gui.name = "Trophy Controller";
+
+        this.gui.domElement.style.position = 'absolute';
+        this.gui.domElement.style.left = '0px';
+        this.gui.domElement.style.top = '0px';
+        this.gui.domElement.style.right = 'auto';
+
+        this.trophyParams = {
+            tx: 0, ty: 65.5, tz: -20,
+            rx: 0, ry: 0, rz: 0,
+            sx: 1, sy: 1, sz: 1
+        };
+
+        const updateTransform = () => {
+            this.trophy.position.set(this.trophyParams.tx, this.trophyParams.ty, this.trophyParams.tz);
+            this.trophy.rotation.set(
+                THREE.MathUtils.degToRad(this.trophyParams.rx),
+                THREE.MathUtils.degToRad(this.trophyParams.ry),
+                THREE.MathUtils.degToRad(this.trophyParams.rz)
+            );
+            this.trophy.scale.set(this.trophyParams.sx, this.trophyParams.sy, this.trophyParams.sz);
+        };
+
+        this.guiControllers = [];
+
+        let fTranslate = this.gui.addFolder('Translate (Tịnh tiến)');
+        this.guiControllers.push(fTranslate.add(this.trophyParams, 'tx', -50, 50).name('X').onChange(updateTransform));
+        this.guiControllers.push(fTranslate.add(this.trophyParams, 'ty', 0, 100).name('Y').onChange(updateTransform));
+        this.guiControllers.push(fTranslate.add(this.trophyParams, 'tz', -50, 50).name('Z').onChange(updateTransform));
+        fTranslate.close();
+
+        let fRotate = this.gui.addFolder('Rotate (Quay)');
+        this.guiControllers.push(fRotate.add(this.trophyParams, 'rx', 0, 360).name('X (Độ)').onChange(updateTransform));
+        this.guiControllers.push(fRotate.add(this.trophyParams, 'ry', 0, 360).name('Y (Độ)').onChange(updateTransform));
+        this.guiControllers.push(fRotate.add(this.trophyParams, 'rz', 0, 360).name('Z (Độ)').onChange(updateTransform));
+        fRotate.close();
+
+        let fScale = this.gui.addFolder('Scale (Tỉ lệ)');
+        this.guiControllers.push(fScale.add(this.trophyParams, 'sx', 0.1, 5).name('X').onChange(updateTransform));
+        this.guiControllers.push(fScale.add(this.trophyParams, 'sy', 0.1, 5).name('Y').onChange(updateTransform));
+        this.guiControllers.push(fScale.add(this.trophyParams, 'sz', 0.1, 5).name('Z').onChange(updateTransform));
+        fScale.close();
+
+        this.resetTrophyGUI = () => {
+            this.trophyParams.tx = 0;
+            this.trophyParams.ty = 65.5;
+            this.trophyParams.tz = -20;
+            this.trophyParams.rx = 0;
+            this.trophyParams.ry = 0;
+            this.trophyParams.rz = 0;
+            this.trophyParams.sx = 1;
+            this.trophyParams.sy = 1;
+            this.trophyParams.sz = 1;
+
+            updateTransform();
+            this.guiControllers.forEach(c => c.updateDisplay());
+        };
+
+        this.gui.close();
     }
 
     render(partialTicks) {
@@ -589,13 +704,13 @@ export default class WorldRenderer {
         let rainStrength = this.minecraft.world.rainStrength;
         if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
             this.sunLight.intensity = brightness * 1.2 * (1.0 - rainStrength * 0.65);
-            
+
             let nightColor = new THREE.Color(0x88aaff);
             let dayColor = new THREE.Color(0xffffff);
-            
+
             let factor = Math.min(1.0, Math.max(0.0, (brightness - 0.1) * 2.5));
             this.ambientLight.color.lerpColors(nightColor, dayColor, factor);
-            
+
             let targetIntensity = 0.25 + factor * 0.25;
             this.ambientLight.intensity = targetIntensity * (1.0 - rainStrength * 0.2);
             this.overlayAmbientLight.intensity = 0.15 + brightness * 0.25;
@@ -1035,6 +1150,10 @@ export default class WorldRenderer {
 
         this.webRenderer.clear();
         this.overlay.clear();
+
+        if (this.resetTrophyGUI) {
+            this.resetTrophyGUI();
+        }
     }
 
     updateLightingFromSettings() {
@@ -1104,7 +1223,7 @@ export default class WorldRenderer {
 
         this.tessellator.startDrawing();
         this.tessellator.bindTexture(this.textureRain);
-        
+
         // Độ đục của hạt mưa phụ thuộc vào rainStrength
         this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
 
@@ -1115,7 +1234,7 @@ export default class WorldRenderer {
             for (let z = minZ; z <= maxZ; z++) {
                 // Lấy độ cao block cao nhất lộ thiên tại vị trí (x, z)
                 let heightY = world.getHeightAt(x, z);
-                
+
                 // Mưa rơi từ trên trời xuống điểm chạm cao nhất
                 let renderMinY = heightY;
                 let renderMaxY = Math.max(py + 24, heightY + 24);
@@ -1163,7 +1282,7 @@ export default class WorldRenderer {
                 let rx = px + Math.floor((Math.random() * 2 - 1) * 8);
                 let rz = pz + Math.floor((Math.random() * 2 - 1) * 8);
                 let ry = world.getHeightAt(rx, rz);
-                
+
                 // Chỉ sinh trên các block lộ thiên và gần người chơi
                 if (ry > 0 && ry >= py - 8 && ry <= py + 8) {
                     pr.spawnParticle(new ParticleRainSplash(
