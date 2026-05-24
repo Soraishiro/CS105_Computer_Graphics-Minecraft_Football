@@ -107,7 +107,7 @@ export default class SoundManager {
 
     initSoundtrack() {
         this.soundtrackAudio = new THREE.Audio(this.audioListener);
-        this.soundtrackAudio.setVolume(0.05); // moderate background music volume
+        this.soundtrackAudio.setVolume(0.2); // moderate background music volume
 
         this.playlist = [];
         this.currentTrackIndex = 0;

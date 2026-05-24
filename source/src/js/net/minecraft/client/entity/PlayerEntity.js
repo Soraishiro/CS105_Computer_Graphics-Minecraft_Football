@@ -115,7 +115,7 @@ export default class PlayerEntity extends EntityLiving {
 
         for (let i = 0; i < this.world.entities.length; i++) {
             let entity = this.world.entities[i];
-            if (entity instanceof BallEntity || entity.constructor?.name === "BallEntity") {
+            if (entity instanceof BallEntity || (entity.constructor && entity.constructor.name === "BallEntity")) {
                 return entity;
             }
         }

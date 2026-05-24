@@ -1,5 +1,6 @@
 import Entity from "/src/js/net/minecraft/client/entity/Entity.js";
 import MathHelper from "/src/js/net/minecraft/util/MathHelper.js";
+import { BlockRegistry } from "/src/js/net/minecraft/client/world/block/BlockRegistry.js";
 import * as THREE from "/libraries/three.module.js";
 
 export default class BallEntity extends Entity {
@@ -67,6 +68,9 @@ export default class BallEntity extends Entity {
 
         // Va chạm với Player
         this.checkPlayerCollision();
+
+        // Va chạm riêng với khung thành
+        this.handleGoalCollision();
     }
 
     getGroundFriction() {
@@ -131,5 +135,87 @@ export default class BallEntity extends Entity {
                 }
             }
         }
+    }
+
+    handleGoalCollision() {
+        if (!this.world) {
+            return;
+        }
+
+        let goalPostId = BlockRegistry.GOAL_POST.getId();
+        let goalNetId = BlockRegistry.GOAL_NET.getId();
+
+        let minX = Math.floor(this.boundingBox.minX) - 1;
+        let maxX = Math.floor(this.boundingBox.maxX) + 1;
+        let minY = Math.floor(this.boundingBox.minY) - 1;
+        let maxY = Math.floor(this.boundingBox.maxY) + 1;
+        let minZ = Math.floor(this.boundingBox.minZ) - 1;
+        let maxZ = Math.floor(this.boundingBox.maxZ) + 1;
+
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    let typeId = this.world.getBlockAt(x, y, z);
+                    if (typeId !== goalPostId && typeId !== goalNetId) {
+                        continue;
+                    }
+
+                    let isNet = typeId === goalNetId;
+                    if (this.resolveGoalBlockCollision(x, y, z, isNet)) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    resolveGoalBlockCollision(blockX, blockY, blockZ, isNet) {
+        let minX = blockX;
+        let maxX = blockX + 1;
+        let minY = blockY;
+        let maxY = blockY + 1;
+        let minZ = blockZ;
+        let maxZ = blockZ + 1;
+
+        let box = this.boundingBox;
+        let overlapX = Math.min(box.maxX, maxX) - Math.max(box.minX, minX);
+        let overlapY = Math.min(box.maxY, maxY) - Math.max(box.minY, minY);
+        let overlapZ = Math.min(box.maxZ, maxZ) - Math.max(box.minZ, minZ);
+
+        if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) {
+            return false;
+        }
+
+        let minOverlap = Math.min(overlapX, overlapY, overlapZ);
+        let centerX = (box.minX + box.maxX) * 0.5;
+        let centerY = (box.minY + box.maxY) * 0.5;
+        let centerZ = (box.minZ + box.maxZ) * 0.5;
+        let blockCenterX = blockX + 0.5;
+        let blockCenterY = blockY + 0.5;
+        let blockCenterZ = blockZ + 0.5;
+
+        let restitution = isNet ? 0.2 : this.restitution;
+
+        if (minOverlap === overlapX) {
+            let direction = centerX < blockCenterX ? -1 : 1;
+            this.setPosition(this.x + direction * (minOverlap + 0.001), this.y, this.z);
+            this.motionX = -this.motionX * restitution;
+        } else if (minOverlap === overlapY) {
+            let direction = centerY < blockCenterY ? -1 : 1;
+            this.setPosition(this.x, this.y + direction * (minOverlap + 0.001), this.z);
+            this.motionY = -this.motionY * restitution;
+        } else {
+            let direction = centerZ < blockCenterZ ? -1 : 1;
+            this.setPosition(this.x, this.y, this.z + direction * (minOverlap + 0.001));
+            this.motionZ = -this.motionZ * restitution;
+        }
+
+        if (isNet) {
+            this.motionX *= 0.6;
+            this.motionY *= 0.6;
+            this.motionZ *= 0.6;
+        }
+
+        return true;
     }
 }
