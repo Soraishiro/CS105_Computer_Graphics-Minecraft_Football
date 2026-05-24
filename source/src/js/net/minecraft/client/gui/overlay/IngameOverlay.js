@@ -53,7 +53,7 @@ export default class IngameOverlay extends Gui {
             let totalTime = world.time % 24000;
             let hour = Math.floor((totalTime / 1000 + 6) % 24);
             let minutes = Math.floor((totalTime % 1000) * 60 / 1000);
-            let formattedTime = hour.toString().padStart(2, '0') + " / " + minutes.toString().padStart(2, '0');
+            let formattedTime = hour.toString().padStart(2, '0') + " : " + minutes.toString().padStart(2, '0');
             this.drawCenteredString(stack, formattedTime, this.window.width / 2, 10, 0xffffffff);
         }
     }
