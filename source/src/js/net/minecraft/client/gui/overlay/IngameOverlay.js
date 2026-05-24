@@ -46,6 +46,16 @@ export default class IngameOverlay extends Gui {
         if (Keyboard.isKeyDown(this.minecraft.settings.keyPlayerList) && !this.minecraft.isSingleplayer()) {
             this.playerListOverlay.renderPlayerList(stack, this.window.width);
         }
+
+        // Render in-game time at top center
+        let world = this.minecraft.world;
+        if (world) {
+            let totalTime = world.time % 24000;
+            let hour = Math.floor((totalTime / 1000 + 6) % 24);
+            let minutes = Math.floor((totalTime % 1000) * 60 / 1000);
+            let formattedTime = hour.toString().padStart(2, '0') + " / " + minutes.toString().padStart(2, '0');
+            this.drawCenteredString(stack, formattedTime, this.window.width / 2, 10, 0xffffffff);
+        }
     }
 
     onTick() {

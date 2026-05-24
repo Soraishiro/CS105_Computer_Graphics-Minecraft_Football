@@ -9,6 +9,7 @@ export default class SoundManager {
 
         this.soundPool = {};
         this._trackChanging = false;
+        this.rainAudio = null;
     }
 
     create(worldRenderer) {
@@ -24,6 +25,14 @@ export default class SoundManager {
             // Load sound types
             this.loadSoundPool(sound.getStepSound());
         }
+
+        // Khởi tạo và tải âm thanh mưa loop
+        this.rainAudio = new THREE.Audio(this.audioListener);
+        this.audioLoader.load('src/resources/sound/ambient/weather/rain.ogg', buffer => {
+            this.rainAudio.setBuffer(buffer);
+            this.rainAudio.setLoop(true);
+            this.rainAudio.setVolume(0);
+        });
 
         // Initialize and start the soundtrack
         this.initSoundtrack();
@@ -193,6 +202,22 @@ export default class SoundManager {
             this.currentTrackIndex++;
             this.playNextTrack();
         });
+    }
+
+    updateWeatherSound(isRaining, rainStrength) {
+        if (!this.rainAudio || !this.rainAudio.buffer) return;
+
+        if (isRaining && rainStrength > 0) {
+            if (!this.rainAudio.isPlaying) {
+                this.rainAudio.play();
+            }
+            // Giảm âm lượng một chút để không lấn át nhạc nền (tối đa 0.25)
+            this.rainAudio.setVolume(rainStrength * 0.25);
+        } else {
+            if (this.rainAudio.isPlaying) {
+                this.rainAudio.pause();
+            }
+        }
     }
 
     isCreated() {

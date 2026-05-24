@@ -21,6 +21,7 @@ export default class GameSettings {
 
         // Lighting settings
         this.enableDayNightLighting = true;
+        this.enableRain = true;
         this.ambientIntensity = 0.4;
         this.sunIntensity = 1.2;
         this.torchIntensity = 2.5;

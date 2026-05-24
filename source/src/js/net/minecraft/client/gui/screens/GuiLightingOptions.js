@@ -52,6 +52,41 @@ export default class GuiLightingOptions extends GuiScreen {
             updateLighting();
         }));
 
+        this.buttonList.push(new GuiSwitchButton("Rain Weather", settings.enableRain, leftX, startY + spacing * 5, colWidth, 20, value => {
+            settings.enableRain = value;
+            if (this.minecraft.world) {
+                this.minecraft.world.isRaining = value;
+                if (!value) {
+                    this.minecraft.world.rainStrength = 0.0;
+                }
+            }
+            updateLighting();
+        }));
+
+        let initialTime = 0;
+        if (this.minecraft.world) {
+            initialTime = this.minecraft.world.time % 24000;
+        }
+
+        this.buttonList.push(new GuiSliderButton("Time", initialTime, 0, 24000, leftX, startY + spacing * 6, colWidth, 20, value => {
+            if (this.minecraft.world) {
+                let world = this.minecraft.world;
+                world.time = value;
+
+                // Sync skylight subtracted and rebuild chunks immediately for real-time visualization
+                let lightLevel = world.calculateSkylightSubtracted(1.0);
+                if (lightLevel !== world.skylightSubtracted) {
+                    world.skylightSubtracted = lightLevel;
+                    this.minecraft.worldRenderer.rebuildAll();
+                }
+                updateLighting();
+            }
+        }).setDisplayNameBuilder((name, value) => {
+            let hour = Math.floor((value / 1000 + 6) % 24);
+            let minutes = Math.floor((value % 1000) * 60 / 1000);
+            return name + ": " + hour.toString().padStart(2, '0') + " / " + minutes.toString().padStart(2, '0');
+        }));
+
         // --- Column 2 (Right: Torches & Spotlights) ---
         this.buttonList.push(new GuiSliderButton("Torch Light", settings.torchIntensity * 10, 0, 100, rightX, startY, colWidth, 20, value => {
             settings.torchIntensity = value / 10;
@@ -90,7 +125,7 @@ export default class GuiLightingOptions extends GuiScreen {
         }));
 
         // Done button at bottom
-        let maxSpacing = 7;
+        let maxSpacing = 8;
         this.buttonList.push(new GuiButton("Done", this.width / 2 - 100, startY + spacing * maxSpacing + 10, 200, 20, () => {
             this.minecraft.displayScreen(this.previousScreen);
         }));

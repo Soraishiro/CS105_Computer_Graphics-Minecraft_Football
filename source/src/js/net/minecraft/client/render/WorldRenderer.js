@@ -8,6 +8,7 @@ import Random from "../../util/Random.js";
 import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
 import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
+import ParticleRainSplash from "./particle/particle/ParticleRainSplash.js";
 
 export default class WorldRenderer {
 
@@ -34,6 +35,13 @@ export default class WorldRenderer {
         this.textureMoon = minecraft.getThreeTexture('terrain/moon.png');
         this.textureMoon.magFilter = THREE.NearestFilter;
         this.textureMoon.minFilter = THREE.NearestFilter;
+
+        // Load rain texture
+        this.textureRain = minecraft.getThreeTexture('misc/rain.png');
+        this.textureRain.magFilter = THREE.NearestFilter;
+        this.textureRain.minFilter = THREE.NearestFilter;
+        this.textureRain.wrapS = THREE.RepeatWrapping;
+        this.textureRain.wrapT = THREE.RepeatWrapping;
 
         // Block Renderer
         this.blockRenderer = new BlockRenderer(this);
@@ -142,7 +150,12 @@ export default class WorldRenderer {
         }));
         this.scene.add(this.blockHitBox);
 
-        // GUI Removed - Migrated to GuiLightingOptions    
+        // Khởi tạo weather group để render thời tiết
+        this.weatherGroup = new THREE.Object3D();
+        this.weatherGroup.matrixAutoUpdate = false;
+        this.scene.add(this.weatherGroup);
+
+        this.rendererUpdateCount = 0;
     }
 
     render(partialTicks) {
@@ -163,6 +176,9 @@ export default class WorldRenderer {
 
         // Render particles
         this.minecraft.particleRenderer.renderParticles(player, partialTicks);
+
+        // Render weather (mưa rơi)
+        this.renderWeather(partialTicks);
 
         // Hide all entities and make them visible during rendering
         for (let entity of this.minecraft.world.entities) {
@@ -196,6 +212,16 @@ export default class WorldRenderer {
     }
 
     onTick() {
+        this.rendererUpdateCount++;
+
+        // Cập nhật âm thanh thời tiết mưa
+        if (this.minecraft.world) {
+            this.minecraft.soundManager.updateWeatherSound(
+                this.minecraft.world.isRaining,
+                this.minecraft.world.rainStrength
+            );
+        }
+
         // Rebuild 2 chunk sections each tick
         for (let i = 0; i < 2; i++) {
             if (this.chunkSectionUpdateQueue.length !== 0) {
@@ -491,19 +517,6 @@ export default class WorldRenderer {
         this.sun.material.depthTest = false;
         this.cycleGroup.add(this.sun);
 
-        // Create moon
-        let materialMoon = new THREE.MeshBasicMaterial({
-            side: THREE.BackSide,
-            map: this.textureMoon,
-            alphaMap: this.textureMoon,
-            blending: THREE.AdditiveBlending,
-            transparent: true
-        });
-        this.moon = new THREE.Mesh(geometry, materialMoon);
-        this.moon.translateZ(2);
-        this.moon.material.depthTest = false;
-        this.cycleGroup.add(this.moon);
-
         // Add cycle group before the void to hide the cycling elements behind the void
         this.backgroundCenter.add(this.cycleGroup);
 
@@ -572,13 +585,26 @@ export default class WorldRenderer {
         // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
         let brightness = Math.max(0, Math.min(1, Math.cos(angle * Math.PI * 2) * 2 + 0.5));
 
+        // Mau anh sang theo gio trong ngay
+        let rainStrength = this.minecraft.world.rainStrength;
         if (this.minecraft.settings && this.minecraft.settings.enableDayNightLighting) {
-            this.sunLight.intensity = brightness * 1.2;
-            this.ambientLight.intensity = 0.15 + brightness * 0.25;
-            this.overlayAmbientLight.intensity = 0.1 + brightness * 0.25;
+            this.sunLight.intensity = brightness * 1.2 * (1.0 - rainStrength * 0.65);
+            
+            let nightColor = new THREE.Color(0x88aaff);
+            let dayColor = new THREE.Color(0xffffff);
+            
+            let factor = Math.min(1.0, Math.max(0.0, (brightness - 0.1) * 2.5));
+            this.ambientLight.color.lerpColors(nightColor, dayColor, factor);
+            
+            let targetIntensity = 0.25 + factor * 0.25;
+            this.ambientLight.intensity = targetIntensity * (1.0 - rainStrength * 0.2);
+            this.overlayAmbientLight.intensity = 0.15 + brightness * 0.25;
         }
 
-        // Mau anh sang theo gio trong ngay
+        // Ẩn mặt trời khi trời mưa to
+        if (this.sun) this.sun.visible = rainStrength < 0.85;
+
+        // Màu ánh sáng mặt trời theo giờ
         if (brightness > 0.5) {
             this.sunLight.color.set(0xfff4e0);  // ban ngay: vang am
         } else if (brightness > 0.05) {
@@ -615,8 +641,15 @@ export default class WorldRenderer {
             // Update background color
             this.background.background = new THREE.Color(red, green, blue);
 
-            // Update fog color
-            this.scene.fog = new THREE.Fog(new THREE.Color(red, green, blue), 0.0025, viewDistance * 2);
+            // Giảm tầm nhìn camera bằng cách kéo sương mù lại gần hơn (giảm tối đa 45%)
+            let fogFar = viewDistance * 2;
+            let rainStrength = world.rainStrength || 0;
+            if (rainStrength > 0.0) {
+                fogFar = fogFar * (1.0 - rainStrength * 0.45);
+            }
+
+            // Update fog color and distance
+            this.scene.fog = new THREE.Fog(new THREE.Color(red, green, blue), 0.0025, fogFar);
 
             let skyMesh = this.listSky.children[0];
             let voidMesh = this.listVoid.children[0];
@@ -1037,6 +1070,112 @@ export default class WorldRenderer {
                 obj.helper.visible = settings.showSpotLightHelper;
             }
         });
+    }
+
+    renderWeather(partialTicks) {
+        let world = this.minecraft.world;
+        if (!world || !world.isRaining || world.rainStrength <= 0) {
+            // Clean up weather rendering when not raining to prevent memory leaks
+            if (this.weatherGroup && this.weatherGroup.children.length > 0) {
+                this.weatherGroup.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                });
+                this.weatherGroup.clear();
+            }
+            return;
+        }
+
+        let player = this.minecraft.player;
+        let px = Math.floor(player.x);
+        let py = Math.floor(player.y);
+        let pz = Math.floor(player.z);
+
+        let RADIUS = 12; // Bán kính 12 blocks quanh camera
+        let minX = px - RADIUS;
+        let maxX = px + RADIUS;
+        let minZ = pz - RADIUS;
+        let maxZ = pz + RADIUS;
+
+        // Dọn dẹp mesh cũ để tránh rò rỉ bộ nhớ
+        this.weatherGroup.children.forEach(child => {
+            if (child.geometry) child.geometry.dispose();
+        });
+        this.weatherGroup.clear();
+
+        this.tessellator.startDrawing();
+        this.tessellator.bindTexture(this.textureRain);
+        
+        // Độ đục của hạt mưa phụ thuộc vào rainStrength
+        this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
+
+        // UV scroll anim
+        let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.15;
+
+        for (let x = minX; x <= maxX; x++) {
+            for (let z = minZ; z <= maxZ; z++) {
+                // Lấy độ cao block cao nhất lộ thiên tại vị trí (x, z)
+                let heightY = world.getHeightAt(x, z);
+                
+                // Mưa rơi từ trên trời xuống điểm chạm cao nhất
+                let renderMinY = heightY;
+                let renderMaxY = Math.max(py + 24, heightY + 24);
+
+                // Nếu cột mưa nằm quá xa player, bỏ qua
+                if (renderMaxY < py - 8 || renderMinY > py + 24) {
+                    continue;
+                }
+
+                // Hashing ngẫu nhiên lệch pha
+                let seed = (x * 31222099 ^ z * 11612389) & 0xFFFF;
+                let scrollOffset = timeFactor + (seed % 100) * 0.01;
+
+                let height = renderMaxY - renderMinY;
+                let uvVStart = 0 + scrollOffset;
+                let uvVEnd = (height * 0.25) + scrollOffset; // Lặp lại texture
+
+                // Quad 1: Chéo N-S
+                this.tessellator.addVertexWithUV(x - 0.5, renderMinY, z - 0.5, 0.0, uvVEnd);
+                this.tessellator.addVertexWithUV(x + 0.5, renderMinY, z + 0.5, 1.0, uvVEnd);
+                this.tessellator.addVertexWithUV(x + 0.5, renderMaxY, z + 0.5, 1.0, uvVStart);
+                this.tessellator.addVertexWithUV(x - 0.5, renderMaxY, z - 0.5, 0.0, uvVStart);
+
+                // Quad 2: Chéo E-W (xoay 90 độ)
+                this.tessellator.addVertexWithUV(x - 0.5, renderMinY, z + 0.5, 0.0, uvVEnd);
+                this.tessellator.addVertexWithUV(x + 0.5, renderMinY, z - 0.5, 1.0, uvVEnd);
+                this.tessellator.addVertexWithUV(x + 0.5, renderMaxY, z - 0.5, 1.0, uvVStart);
+                this.tessellator.addVertexWithUV(x - 0.5, renderMaxY, z + 0.5, 0.0, uvVStart);
+            }
+        }
+
+        if (this.tessellator.addedVertices > 0) {
+            let mesh = this.tessellator.draw(this.weatherGroup);
+            mesh.material.transparent = true;
+            mesh.material.depthWrite = false;
+            mesh.material.alphaTest = 0.01;
+            mesh.material.needsUpdate = true;
+        }
+
+        // Sinh hạt nước bắn tung téo (splash particles) tại điểm va chạm quanh camera
+        if (world.rainStrength > 0.1 && Math.random() < 0.3 * world.rainStrength) {
+            let pr = this.minecraft.particleRenderer;
+            let splashCount = Math.floor(world.rainStrength * 3);
+            for (let i = 0; i < splashCount; i++) {
+                let rx = px + Math.floor((Math.random() * 2 - 1) * 8);
+                let rz = pz + Math.floor((Math.random() * 2 - 1) * 8);
+                let ry = world.getHeightAt(rx, rz);
+                
+                // Chỉ sinh trên các block lộ thiên và gần người chơi
+                if (ry > 0 && ry >= py - 8 && ry <= py + 8) {
+                    pr.spawnParticle(new ParticleRainSplash(
+                        this.minecraft,
+                        world,
+                        rx + Math.random(),
+                        ry + 0.1,
+                        rz + Math.random()
+                    ));
+                }
+            }
+        }
     }
 
 }

@@ -27,6 +27,11 @@ export default class World {
         this.time = 18000;
         this.spawn = new Vector3(0, 0, 0);
 
+        this.isRaining = false;
+        this.rainStrength = 0.0;
+        this.rainTimer = 0;
+        this.nextRainTimer = 7000; // Next morning (time=25000, which is 7am)
+
         // Update lights async
         let scope = this;
         setInterval(function () {
@@ -48,9 +53,43 @@ export default class World {
             this.entities[i].onUpdate();
         }
 
+        // Mưa ngẫu nhiên và theo chu kỳ nếu được bật
+        if (this.minecraft.settings && this.minecraft.settings.enableRain) {
+            if (this.rainTimer > 0) {
+                this.rainTimer--;
+                if (this.rainTimer <= 0) {
+                    this.isRaining = false;
+                    this.nextRainTimer = 24000 + Math.random() * 48000; // Randomly 1-3 days later
+                }
+            } else {
+                if (this.nextRainTimer > 0) {
+                    this.nextRainTimer--;
+                    if (this.nextRainTimer <= 0) {
+                        this.isRaining = true;
+                        this.rainTimer = 2000 + Math.random() * 2000; // Rain for a while
+                    }
+                }
+            }
+        } else {
+            this.isRaining = false;
+            this.rainTimer = 0;
+        }
+
+        // Cập nhật rainStrength mượt mà
+        let prevRainStrength = this.rainStrength;
+        if (this.isRaining) {
+            if (this.rainStrength < 1.0) {
+                this.rainStrength = Math.min(1.0, this.rainStrength + 0.02);
+            }
+        } else {
+            if (this.rainStrength > 0.0) {
+                this.rainStrength = Math.max(0.0, this.rainStrength - 0.02);
+            }
+        }
+
         // Update skylight subtracted (To make the night dark)
         let lightLevel = this.calculateSkylightSubtracted(1.0);
-        if (lightLevel !== this.skylightSubtracted) {
+        if (lightLevel !== this.skylightSubtracted || prevRainStrength !== this.rainStrength) {
             this.skylightSubtracted = lightLevel;
 
             // Rebuild all chunks
@@ -581,7 +620,12 @@ export default class World {
         if (level > 1.0) {
             level = 1.0;
         }
-        return Math.floor(level * 11);
+        let baseSubtracted = Math.floor(level * 11);
+        if (this.rainStrength > 0.0) {
+            let rainSub = Math.floor(this.rainStrength * 3.0);
+            baseSubtracted = Math.min(15, baseSubtracted + rainSub);
+        }
+        return baseSubtracted;
     }
 
     addEntity(entity) {

@@ -130,6 +130,7 @@ class Start {
   launch(canvasWrapperId) {
     this.loadTextures([
       'misc/grasscolor.png',
+      'misc/rain.png',
       'gui/font.png',
       'gui/gui.png',
       'gui/background.png',
