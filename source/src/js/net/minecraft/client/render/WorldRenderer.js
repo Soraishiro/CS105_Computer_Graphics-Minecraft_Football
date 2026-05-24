@@ -1231,7 +1231,7 @@ export default class WorldRenderer {
     let py = Math.floor(player.y);
     let pz = Math.floor(player.z);
 
-    let RADIUS = 14; // Bán kính render mưa — đủ rộng để không lộ pattern grid
+    let RADIUS = 12; // Bán kính 12 blocks quanh camera
     let minX = px - RADIUS;
     let maxX = px + RADIUS;
     let minZ = pz - RADIUS;
@@ -1246,10 +1246,9 @@ export default class WorldRenderer {
     this.tessellator.startDrawing();
     this.tessellator.bindTexture(this.textureRain);
 
-    this.tessellator.setColor(0.8, 0.9, 1.0, world.rainStrength * 0.18);
+    this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
 
-    // UV scroll — slow fall speed
-    let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.025;
+    let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.15;
 
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
@@ -1271,7 +1270,7 @@ export default class WorldRenderer {
 
         let height = renderMaxY - renderMinY;
         let uvVStart = 0 + scrollOffset;
-        let uvVEnd = height * 0.35 + scrollOffset; // nhiều giọt nhỏ hơn, trông tự nhiên hơn
+        let uvVEnd = height * 0.25 + scrollOffset;
 
         // Quad 1: Chéo N-S
         this.tessellator.addVertexWithUV(
@@ -1344,9 +1343,9 @@ export default class WorldRenderer {
     }
 
     // Sinh hạt nước bắn tung téo (splash particles) tại điểm va chạm quanh camera
-    if (world.rainStrength > 0.1 && Math.random() < 0.12 * world.rainStrength) {
+    if (world.rainStrength > 0.1 && Math.random() < 0.3 * world.rainStrength) {
       let pr = this.minecraft.particleRenderer;
-      let splashCount = Math.floor(world.rainStrength * 1.5);
+      let splashCount = Math.floor(world.rainStrength * 3);
       for (let i = 0; i < splashCount; i++) {
         let rx = px + Math.floor((Math.random() * 2 - 1) * 8);
         let rz = pz + Math.floor((Math.random() * 2 - 1) * 8);
