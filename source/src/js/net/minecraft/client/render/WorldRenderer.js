@@ -169,48 +169,72 @@ export default class WorldRenderer {
   setupTrophy() {
     this.trophy = new THREE.Group();
 
-    let textureTrophy = this.minecraft.getThreeTexture('trophy.png');
-    if (textureTrophy) {
-      textureTrophy.magFilter = THREE.NearestFilter;
-      textureTrophy.minFilter = THREE.NearestFilter;
-    }
-
-    let model = new ModelPlayer();
-    let tess = new Tessellator();
-    tess.bindTexture(textureTrophy);
-    tess.setColor(1, 1, 1);
-
-    let meshGroup = new THREE.Object3D();
-    model.rebuild(tess, meshGroup);
-    model.render(meshGroup, 0, 0, 0, 0, 0, 0);
-
-    meshGroup.traverse(child => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material && child.material.type === "MeshBasicMaterial") {
-          child.geometry.computeVertexNormals();
-          let oldMaterial = child.material;
-          child.material = new THREE.MeshStandardMaterial({
-            map: oldMaterial.map,
-            color: 0xffffff,
-            transparent: true,
-            alphaTest: 0.1,
-            vertexColors: false,
-            roughness: 0.8
-          });
-          oldMaterial.dispose();
-        }
-      }
+    // Material vàng bóng cho phần cúp
+    let goldMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffd700, // Màu vàng Gold
+      metalness: 0.8,
+      roughness: 0.2,
     });
 
-    let scale = 7.0 / 120.0;
-    meshGroup.scale.set(-scale, -scale, scale);
-    meshGroup.position.set(0, 1.4, 0);
+    // Material gỗ/nhựa đen cho phần đế
+    let baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      roughness: 0.9,
+    });
 
-    this.trophy.add(meshGroup);
+    // 1. Đế cúp (Base)
+    let baseGeom = new THREE.BoxGeometry(6, 2, 6);
+    let base = new THREE.Mesh(baseGeom, baseMaterial);
+    base.position.set(0, 1, 0);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    this.trophy.add(base);
 
-    this.trophy.position.set(0, 65.5, -20);
+    // 2. Chân cúp (Stem)
+    let stemGeom = new THREE.CylinderGeometry(0.8, 2, 5, 32);
+    let stem = new THREE.Mesh(stemGeom, goldMaterial);
+    stem.position.set(0, 4.5, 0);
+    stem.castShadow = true;
+    stem.receiveShadow = true;
+    this.trophy.add(stem);
+
+    // 3. Đáy thân cúp (Bowl bottom)
+    let bowlBottomGeom = new THREE.CylinderGeometry(3, 0.8, 2, 32);
+    let bowlBottom = new THREE.Mesh(bowlBottomGeom, goldMaterial);
+    bowlBottom.position.set(0, 8, 0);
+    bowlBottom.castShadow = true;
+    bowlBottom.receiveShadow = true;
+    this.trophy.add(bowlBottom);
+
+    // 4. Thân cúp chính (Bowl top)
+    let bowlTopGeom = new THREE.CylinderGeometry(4, 3, 4, 32);
+    let bowlTop = new THREE.Mesh(bowlTopGeom, goldMaterial);
+    bowlTop.position.set(0, 11, 0);
+    bowlTop.castShadow = true;
+    bowlTop.receiveShadow = true;
+    this.trophy.add(bowlTop);
+
+    // 5. Quai cúp bên trái (Left Handle)
+    let handleGeom = new THREE.TorusGeometry(2.5, 0.4, 16, 32);
+    let leftHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    leftHandle.position.set(-4, 10, 0);
+    leftHandle.rotation.set(0, 0, Math.PI / 8);
+    leftHandle.castShadow = true;
+    leftHandle.receiveShadow = true;
+    this.trophy.add(leftHandle);
+
+    // 6. Quai cúp bên phải (Right Handle)
+    let rightHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    rightHandle.position.set(4, 10, 0);
+    rightHandle.rotation.set(0, 0, -Math.PI / 8);
+    rightHandle.castShadow = true;
+    rightHandle.receiveShadow = true;
+    this.trophy.add(rightHandle);
+
+    // Scale cho vừa vặn
+    this.trophy.scale.set(0.1, 0.1, 0.1);
+
+    this.trophy.position.set(0.5, 66, -22.5);
     this.scene.add(this.trophy);
   }
 
@@ -224,9 +248,9 @@ export default class WorldRenderer {
     this.gui.domElement.style.right = 'auto';
 
     this.trophyParams = {
-      tx: 0, ty: 65.5, tz: -20,
+      tx: 0.5, ty: 66, tz: -22.5,
       rx: 0, ry: 0, rz: 0,
-      sx: 1, sy: 1, sz: 1
+      sx: 0.1, sy: 0.1, sz: 0.1
     };
 
     const updateTransform = () => {
@@ -260,15 +284,15 @@ export default class WorldRenderer {
     fScale.close();
 
     this.resetTrophyGUI = () => {
-      this.trophyParams.tx = 0;
-      this.trophyParams.ty = 65.5;
-      this.trophyParams.tz = -20;
+      this.trophyParams.tx = 0.5;
+      this.trophyParams.ty = 66;
+      this.trophyParams.tz = -22.5;
       this.trophyParams.rx = 0;
       this.trophyParams.ry = 0;
       this.trophyParams.rz = 0;
-      this.trophyParams.sx = 1;
-      this.trophyParams.sy = 1;
-      this.trophyParams.sz = 1;
+      this.trophyParams.sx = 0.1;
+      this.trophyParams.sy = 0.1;
+      this.trophyParams.sz = 0.1;
 
       updateTransform();
       this.guiControllers.forEach(c => c.updateDisplay());
