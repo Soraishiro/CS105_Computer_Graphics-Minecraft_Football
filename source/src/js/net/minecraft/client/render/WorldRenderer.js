@@ -9,6 +9,7 @@ import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
 import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
 import ParticleRainSplash from "./particle/particle/ParticleRainSplash.js";
+import ModelPlayer from "./model/model/ModelPlayer.js";
 
 export default class WorldRenderer {
   static THIRD_PERSON_DISTANCE = 4;
@@ -159,7 +160,121 @@ export default class WorldRenderer {
     this.weatherGroup.matrixAutoUpdate = false;
     this.scene.add(this.weatherGroup);
 
+    this.setupTrophy();
+    this.setupDatGUI();
+
     this.rendererUpdateCount = 0;
+  }
+
+  setupTrophy() {
+    this.trophy = new THREE.Group();
+
+    let textureTrophy = this.minecraft.getThreeTexture('trophy.png');
+    if (textureTrophy) {
+      textureTrophy.magFilter = THREE.NearestFilter;
+      textureTrophy.minFilter = THREE.NearestFilter;
+    }
+
+    let model = new ModelPlayer();
+    let tess = new Tessellator();
+    tess.bindTexture(textureTrophy);
+    tess.setColor(1, 1, 1);
+
+    let meshGroup = new THREE.Object3D();
+    model.rebuild(tess, meshGroup);
+    model.render(meshGroup, 0, 0, 0, 0, 0, 0);
+
+    meshGroup.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material && child.material.type === "MeshBasicMaterial") {
+          child.geometry.computeVertexNormals();
+          let oldMaterial = child.material;
+          child.material = new THREE.MeshStandardMaterial({
+            map: oldMaterial.map,
+            color: 0xffffff,
+            transparent: true,
+            alphaTest: 0.1,
+            vertexColors: false,
+            roughness: 0.8
+          });
+          oldMaterial.dispose();
+        }
+      }
+    });
+
+    let scale = 7.0 / 120.0;
+    meshGroup.scale.set(-scale, -scale, scale);
+    meshGroup.position.set(0, 1.4, 0);
+
+    this.trophy.add(meshGroup);
+
+    this.trophy.position.set(0, 65.5, -20);
+    this.scene.add(this.trophy);
+  }
+
+  setupDatGUI() {
+    this.gui = new GUI();
+    this.gui.name = "Trophy Controller";
+
+    this.gui.domElement.style.position = 'absolute';
+    this.gui.domElement.style.left = '0px';
+    this.gui.domElement.style.top = '0px';
+    this.gui.domElement.style.right = 'auto';
+
+    this.trophyParams = {
+      tx: 0, ty: 65.5, tz: -20,
+      rx: 0, ry: 0, rz: 0,
+      sx: 1, sy: 1, sz: 1
+    };
+
+    const updateTransform = () => {
+      this.trophy.position.set(this.trophyParams.tx, this.trophyParams.ty, this.trophyParams.tz);
+      this.trophy.rotation.set(
+        THREE.MathUtils.degToRad(this.trophyParams.rx),
+        THREE.MathUtils.degToRad(this.trophyParams.ry),
+        THREE.MathUtils.degToRad(this.trophyParams.rz)
+      );
+      this.trophy.scale.set(this.trophyParams.sx, this.trophyParams.sy, this.trophyParams.sz);
+    };
+
+    this.guiControllers = [];
+
+    let fTranslate = this.gui.addFolder('Translate (Tịnh tiến)');
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'tx', -50, 50).name('X').onChange(updateTransform));
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'ty', 0, 100).name('Y').onChange(updateTransform));
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'tz', -50, 50).name('Z').onChange(updateTransform));
+    fTranslate.close();
+
+    let fRotate = this.gui.addFolder('Rotate (Quay)');
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'rx', 0, 360).name('X (Độ)').onChange(updateTransform));
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'ry', 0, 360).name('Y (Độ)').onChange(updateTransform));
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'rz', 0, 360).name('Z (Độ)').onChange(updateTransform));
+    fRotate.close();
+
+    let fScale = this.gui.addFolder('Scale (Tỉ lệ)');
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sx', 0.1, 5).name('X').onChange(updateTransform));
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sy', 0.1, 5).name('Y').onChange(updateTransform));
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sz', 0.1, 5).name('Z').onChange(updateTransform));
+    fScale.close();
+
+    this.resetTrophyGUI = () => {
+      this.trophyParams.tx = 0;
+      this.trophyParams.ty = 65.5;
+      this.trophyParams.tz = -20;
+      this.trophyParams.rx = 0;
+      this.trophyParams.ry = 0;
+      this.trophyParams.rz = 0;
+      this.trophyParams.sx = 1;
+      this.trophyParams.sy = 1;
+      this.trophyParams.sz = 1;
+
+      updateTransform();
+      this.guiControllers.forEach(c => c.updateDisplay());
+    };
+
+    this.gui.close();
   }
 
   render(partialTicks) {
@@ -812,11 +927,11 @@ export default class WorldRenderer {
     this.chunkSectionUpdateQueue.sort((section1, section2) => {
       let distance1 = Math.floor(
         Math.pow(section1.x - cameraChunkX, 2) +
-          Math.pow(section1.z - cameraChunkZ, 2),
+        Math.pow(section1.z - cameraChunkZ, 2),
       );
       let distance2 = Math.floor(
         Math.pow(section2.x - cameraChunkX, 2) +
-          Math.pow(section2.z - cameraChunkZ, 2),
+        Math.pow(section2.z - cameraChunkZ, 2),
       );
       return distance1 - distance2;
     });
@@ -825,11 +940,11 @@ export default class WorldRenderer {
     world.group.children.sort((a, b) => {
       let distance1 = Math.floor(
         Math.pow(a.chunkX - cameraChunkX, 2) +
-          Math.pow(a.chunkZ - cameraChunkZ, 2),
+        Math.pow(a.chunkZ - cameraChunkZ, 2),
       );
       let distance2 = Math.floor(
         Math.pow(b.chunkX - cameraChunkX, 2) +
-          Math.pow(b.chunkZ - cameraChunkZ, 2),
+        Math.pow(b.chunkZ - cameraChunkZ, 2),
       );
       return distance2 - distance1;
     });
@@ -991,23 +1106,23 @@ export default class WorldRenderer {
         // Update position of hit box
         this.blockHitBox.position.set(
           x +
-            width / 2 / width -
-            0.5 +
-            boundingBox.maxX -
-            width / 2 +
-            offset / 2,
+          width / 2 / width -
+          0.5 +
+          boundingBox.maxX -
+          width / 2 +
+          offset / 2,
           y +
-            height / 2 / height -
-            0.5 +
-            boundingBox.maxY -
-            height / 2 +
-            offset / 2,
+          height / 2 / height -
+          0.5 +
+          boundingBox.maxY -
+          height / 2 +
+          offset / 2,
           z +
-            depth / 2 / depth -
-            0.5 +
-            boundingBox.maxZ -
-            depth / 2 +
-            offset / 2,
+          depth / 2 / depth -
+          0.5 +
+          boundingBox.maxZ -
+          depth / 2 +
+          offset / 2,
         );
       }
     }
@@ -1176,6 +1291,10 @@ export default class WorldRenderer {
 
     this.webRenderer.clear();
     this.overlay.clear();
+
+    if (this.resetTrophyGUI) {
+      this.resetTrophyGUI();
+    }
   }
 
   updateLightingFromSettings() {
@@ -1246,6 +1365,7 @@ export default class WorldRenderer {
     this.tessellator.startDrawing();
     this.tessellator.bindTexture(this.textureRain);
 
+    // Độ đục của hạt mưa phụ thuộc vào rainStrength
     this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
 
     let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.15;
@@ -1353,17 +1473,16 @@ export default class WorldRenderer {
 
         // Chỉ sinh trên các block lộ thiên và gần người chơi
         if (ry > 0 && ry >= py - 8 && ry <= py + 8) {
-          pr.spawnParticle(
-            new ParticleRainSplash(
-              this.minecraft,
-              world,
-              rx + Math.random(),
-              ry + 0.1,
-              rz + Math.random(),
-            ),
-          );
+          pr.spawnParticle(new ParticleRainSplash(
+            this.minecraft,
+            world,
+            rx + Math.random(),
+            ry + 0.1,
+            rz + Math.random()
+          ));
         }
       }
     }
   }
+
 }
