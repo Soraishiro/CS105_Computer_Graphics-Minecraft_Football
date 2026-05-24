@@ -24,6 +24,7 @@ import FocusStateType from '../util/FocusStateType.js';
 import Session from '../util/Session.js';
 import BallEntity from "/src/js/net/minecraft/client/entity/BallEntity.js";
 import PlayerEntity from "/src/js/net/minecraft/client/entity/PlayerEntity.js";
+import ParticleConfetti from "/src/js/net/minecraft/client/render/particle/particle/ParticleConfetti.js";
 import PlayerControllerMultiplayer from './network/controller/PlayerControllerMultiplayer.js';
 import World from './world/World.js';
 import ChunkProviderGenerate from './world/provider/ChunkProviderGenerate.js';
@@ -54,6 +55,7 @@ export default class Minecraft {
     this.playerController = null;
     this.fps = 0;
     this.maxFps = 0;
+    this.confettiDelayTicks = -1;
 
     // Tick timer
     this.timer = new Timer(20);
@@ -195,6 +197,7 @@ export default class Minecraft {
       for (let i = 0; i < 6; i++) {
         let sub = new PlayerEntity(this, this.world, 200 + i);
         sub.username = "Sub " + (i + 1);
+        sub.lookAtBall = true;
         let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
         let z = -20; // Standing near the tunnel
         sub.setPosition(x, this.world.getHeightAt(x, z), z);
@@ -211,11 +214,50 @@ export default class Minecraft {
       let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
       referee.username = "Referee";
       referee.isReferee = true;
+      referee.lookAtBall = true;
       let refY = this.world.getHeightAt(0, 0);
       referee.setPosition(0, refY, 0);
       referee.rotationYaw = 90; // face sideways
       referee.prevRotationYaw = 90;
       this.world.addEntity(referee);
+
+      this.confettiDelayTicks = 40;
+    }
+  }
+
+  spawnConfettiAtTunnel() {
+    if (!this.world) {
+      return;
+    }
+
+    const spawnZ = (this.world.spawn ? this.world.spawn.z : -25) + 1;
+    const leftX = -3.5;
+    const rightX = 3.5;
+    const burstCount = 90;
+
+    this.spawnConfettiBurst(leftX, spawnZ, burstCount);
+    this.spawnConfettiBurst(rightX, spawnZ, burstCount);
+  }
+
+  spawnConfettiBurst(x, z, count) {
+    if (!this.world) {
+      return;
+    }
+
+    let baseY = this.world.getHeightAt(x, z) + 2;
+    for (let i = 0; i < count; i++) {
+      let offsetX = (Math.random() - 0.5) * 1.5;
+      let offsetY = Math.random() * 1.5;
+      let offsetZ = (Math.random() - 0.5) * 1.5;
+      this.particleRenderer.spawnParticle(
+        new ParticleConfetti(
+          this,
+          this.world,
+          x + offsetX,
+          baseY + offsetY,
+          z + offsetZ
+        )
+      );
     }
   }
 
@@ -350,6 +392,14 @@ export default class Minecraft {
 
       // Tick particle renderer
       this.particleRenderer.onTick();
+
+      if (this.confettiDelayTicks > 0) {
+        this.confettiDelayTicks--;
+        if (this.confettiDelayTicks === 0) {
+          this.spawnConfettiAtTunnel();
+          this.confettiDelayTicks = -1;
+        }
+      }
     }
 
     // Tick the screen
@@ -593,10 +643,14 @@ export default class Minecraft {
   getThreeTexture(id) {
     if (!(id in this.resources)) {
       console.error('Texture not found: ' + id);
-      return;
+      return this.getMissingTexture();
     }
 
     let image = this.resources[id];
+    if (!image || !image.width || !image.height) {
+      console.error('Texture not loaded: ' + id);
+      return this.getMissingTexture();
+    }
     let canvas = document.createElement('canvas');
     let context = canvas.getContext('2d');
     canvas.width = image.width;
@@ -604,5 +658,24 @@ export default class Minecraft {
     context.imageSmoothingEnabled = false;
     context.drawImage(image, 0, 0, image.width, image.height);
     return new THREE.CanvasTexture(canvas);
+  }
+
+  getMissingTexture() {
+    if (this.missingTexture) {
+      return this.missingTexture;
+    }
+
+    let canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 16;
+    let context = canvas.getContext('2d');
+    context.imageSmoothingEnabled = false;
+    context.fillStyle = '#ff00ff';
+    context.fillRect(0, 0, 16, 16);
+    context.fillStyle = '#000000';
+    context.fillRect(0, 0, 8, 8);
+    context.fillRect(8, 8, 8, 8);
+    this.missingTexture = new THREE.CanvasTexture(canvas);
+    return this.missingTexture;
   }
 }
