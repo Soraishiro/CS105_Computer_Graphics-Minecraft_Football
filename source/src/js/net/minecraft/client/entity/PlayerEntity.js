@@ -5,6 +5,7 @@ import Keyboard from "../../util/Keyboard.js";
 import Vector3 from "../../util/Vector3.js";
 import {BlockRegistry} from "../world/block/BlockRegistry.js";
 import InventoryPlayer from "../inventory/inventory/InventoryPlayer.js";
+import BallEntity from "./BallEntity.js";
 
 export default class PlayerEntity extends EntityLiving {
 
@@ -15,6 +16,7 @@ export default class PlayerEntity extends EntityLiving {
 
         this.inventory = new InventoryPlayer();
         this.username = "Player";
+        this.lookAtBall = false;
 
         this.collision = false;
 
@@ -70,6 +72,55 @@ export default class PlayerEntity extends EntityLiving {
 
     onUpdate() {
         super.onUpdate();
+
+        if (this !== this.minecraft.player && this.lookAtBall) {
+            this.updateLookAtBall();
+        }
+    }
+
+    updateLookAtBall() {
+        let ball = this.getBallEntity();
+        if (!ball) {
+            return;
+        }
+
+        let dx = ball.x - this.x;
+        let dz = ball.z - this.z;
+        let distanceXZ = Math.sqrt(dx * dx + dz * dz);
+        if (distanceXZ < 0.0001) {
+            return;
+        }
+
+        let dy = (ball.y + ball.height * 0.5) - (this.y + this.getEyeHeight());
+        let targetYaw = Math.atan2(dz, dx) * 180.0 / Math.PI - 90.0;
+        let targetPitch = -Math.atan2(dy, distanceXZ) * 180.0 / Math.PI;
+        targetPitch = Math.max(-90.0, Math.min(90.0, targetPitch));
+
+        let headYawDelta = MathHelper.wrapAngleTo180(targetYaw - this.rotationYawHead);
+        let pitchDelta = targetPitch - this.rotationPitch;
+
+        this.rotationYawHead += headYawDelta * 0.35;
+        this.rotationPitch += pitchDelta * 0.35;
+    }
+
+    getBallEntity() {
+        if (!this.world) {
+            return null;
+        }
+
+        let byId = this.world.getEntityById ? this.world.getEntityById(100) : null;
+        if (byId) {
+            return byId;
+        }
+
+        for (let i = 0; i < this.world.entities.length; i++) {
+            let entity = this.world.entities[i];
+            if (entity instanceof BallEntity || entity.constructor?.name === "BallEntity") {
+                return entity;
+            }
+        }
+
+        return null;
     }
 
     onLivingUpdate() {

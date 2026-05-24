@@ -195,6 +195,7 @@ export default class Minecraft {
       for (let i = 0; i < 6; i++) {
         let sub = new PlayerEntity(this, this.world, 200 + i);
         sub.username = "Sub " + (i + 1);
+        sub.lookAtBall = true;
         let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
         let z = -20; // Standing near the tunnel
         sub.setPosition(x, this.world.getHeightAt(x, z), z);
@@ -211,6 +212,7 @@ export default class Minecraft {
       let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
       referee.username = "Referee";
       referee.isReferee = true;
+      referee.lookAtBall = true;
       let refY = this.world.getHeightAt(0, 0);
       referee.setPosition(0, refY, 0);
       referee.rotationYaw = 90; // face sideways
