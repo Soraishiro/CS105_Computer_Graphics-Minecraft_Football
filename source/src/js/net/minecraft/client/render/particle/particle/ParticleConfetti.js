@@ -47,4 +47,8 @@ export default class ParticleConfetti extends Particle {
             this.motionZ *= this.groundFriction;
         }
     }
+
+    getEntityBrightness() {
+        return 1.0;
+    }
 }
