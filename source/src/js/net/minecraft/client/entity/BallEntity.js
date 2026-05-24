@@ -1,5 +1,6 @@
 import Entity from "/src/js/net/minecraft/client/entity/Entity.js";
 import MathHelper from "/src/js/net/minecraft/util/MathHelper.js";
+import * as THREE from "/libraries/three.module.js";
 
 export default class BallEntity extends Entity {
 
@@ -11,12 +12,19 @@ export default class BallEntity extends Entity {
         this.restitution = 0.7; // Hệ số nảy (0.0 - 1.0)
         this.friction = 0.98;    // Ma sát mặt đất
         this.airResistance = 0.98; // Lực cản không khí
+
+        this.rollQuat = new THREE.Quaternion();
+        this.prevRollQuat = new THREE.Quaternion();
+        this.rollAxis = new THREE.Vector3();
+        this.rollDeltaQuat = new THREE.Quaternion();
         
         this.setPosition(0, 70, 0); // Spawn bổng lên chút để thấy nó rơi và nảy
     }
 
     onUpdate() {
         super.onUpdate();
+
+        this.prevRollQuat.copy(this.rollQuat);
 
         // Trọng lực
         this.motionY -= 0.04;
@@ -49,12 +57,50 @@ export default class BallEntity extends Entity {
 
         // Ma sát mặt đất
         if (this.onGround) {
-            this.motionX *= this.friction;
-            this.motionZ *= this.friction;
+            let groundFriction = this.getGroundFriction();
+            this.motionX *= groundFriction;
+            this.motionZ *= groundFriction;
         }
+
+        // Roll rotation khi bóng lăn trên mặt đất
+        this.updateRollRotation();
 
         // Va chạm với Player
         this.checkPlayerCollision();
+    }
+
+    getGroundFriction() {
+        let groundFriction = this.friction;
+        if (this.world && this.world.isRaining) {
+            let rainStrength = this.world.rainStrength || 0.0;
+            groundFriction = Math.min(1.0, groundFriction + 0.02 * rainStrength);
+        }
+        return groundFriction;
+    }
+
+    updateRollRotation() {
+        if (!this.onGround) {
+            return;
+        }
+
+        let dx = this.x - this.prevX;
+        let dz = this.z - this.prevZ;
+        let distance = Math.sqrt(dx * dx + dz * dz);
+        if (distance < 0.0001) {
+            return;
+        }
+
+        let radius = this.width / 2;
+        let angle = distance / radius;
+
+        this.rollAxis.set(dz, 0, -dx);
+        if (this.rollAxis.lengthSq() < 0.000001) {
+            return;
+        }
+
+        this.rollAxis.normalize();
+        this.rollDeltaQuat.setFromAxisAngle(this.rollAxis, angle);
+        this.rollQuat.multiply(this.rollDeltaQuat).normalize();
     }
 
     checkPlayerCollision() {
