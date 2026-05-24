@@ -122,6 +122,8 @@ export default class BallEntity extends Entity {
                 let kickPower = 0.1;
                 this.motionX += dx * kickPower;
                 this.motionZ += dz * kickPower;
+
+                this.minecraft.soundManager.playSound("random.soccer_kick", this.x, this.y, this.z, 1.0, 1.0);
                 
                 // Hơi nảy lên một chút nếu đang ở gần chân
                 if (this.onGround) {

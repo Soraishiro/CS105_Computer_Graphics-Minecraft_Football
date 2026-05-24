@@ -107,7 +107,7 @@ export default class SoundManager {
 
     initSoundtrack() {
         this.soundtrackAudio = new THREE.Audio(this.audioListener);
-        this.soundtrackAudio.setVolume(0.5); // moderate background music volume
+        this.soundtrackAudio.setVolume(0.05); // moderate background music volume
 
         this.playlist = [];
         this.currentTrackIndex = 0;
@@ -125,7 +125,8 @@ export default class SoundManager {
         const otherSongs = [
             'src/resources/sound/soundtrack/Ride.ogg',
             'src/resources/sound/soundtrack/RatherBe.ogg',
-            'src/resources/sound/soundtrack/alorsondanse.ogg'
+            'src/resources/sound/soundtrack/alorsondanse.ogg',
+            'src/resources/sound/soundtrack/NorthLondonForever.ogg'
         ];
 
         // 1. Pick opener category: Champions League (false) or Premier League (true)
