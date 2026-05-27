@@ -305,6 +305,8 @@ export default class Minecraft {
             z: wz + 0.5,
             yawAngle: yawAngle,
             tier: tier, // 0 = front row, higher = back rows
+            wx: wx, // integer block coords for spacing-conflict checks
+            wz: wz,
           });
         }
       }
@@ -320,15 +322,31 @@ export default class Minecraft {
         seatPositions[j] = tmp;
       }
 
-      // Lower density gives visible gaps between adjacent mobs so the stand
-      // doesn't read as a solid wall of bodies.
-      const FILL_RATIO = 0.32; // ~32% occupancy per stand
-      const MAX_SPECTATORS = 600;
-      let targetCount = Math.min(
-        Math.floor(seatPositions.length * FILL_RATIO),
-        MAX_SPECTATORS,
-      );
-      let selectedSeats = seatPositions.slice(0, targetCount);
+      // Greedy minimum-spacing sampler. Random fill at any percentage still
+      // produces adjacent same-tier mobs by chance, which read as visual
+      // clumps ("dính chùm"). To guarantee no two mobs ever sit on touching
+      // seat blocks within the same tier, we walk the shuffled list and
+      // accept a seat only when none of its 8 neighbours in the same tier
+      // are already occupied. This produces a clean checkerboard-ish layout
+      // with predictable gaps between mobs.
+      const MAX_SPECTATORS = 500;
+      const occupied = new Set(); // "wx,wz,tier" of already-accepted seats
+      const conflicts = (wx, wz, tier) => {
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            if (dx === 0 && dz === 0) continue;
+            if (occupied.has(`${wx + dx},${wz + dz},${tier}`)) return true;
+          }
+        }
+        return false;
+      };
+      let selectedSeats = [];
+      for (const seat of seatPositions) {
+        if (selectedSeats.length >= MAX_SPECTATORS) break;
+        if (conflicts(seat.wx, seat.wz, seat.tier)) continue;
+        occupied.add(`${seat.wx},${seat.wz},${seat.tier}`);
+        selectedSeats.push(seat);
+      }
 
       // Per-tier mob pools — each tier holds 4-6 compatible mob types so the
       // crowd has variety along every row (instead of an entire back row of
