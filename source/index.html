@@ -23,28 +23,32 @@
 
     <!-- Loading Overlay (visible during asset preload + world generation) -->
     <div id="loading-overlay" class="active">
-      <div class="loading-backdrop"></div>
-
       <div class="loading-content">
+        <!-- Mojang-style "Did you know" tip at top, yellow on dirt background -->
+        <section class="mc-tip-banner">
+          <span class="mc-tip-prefix">Did you know:</span>
+          <span class="mc-tip-text" id="mc-rotating-tip"
+            >Press 2× Space to toggle Fly Mode.</span
+          >
+        </section>
+
         <header class="loading-header">
-          <h1 class="loading-title">
-            <span class="title-emoji">⚽</span>
-            Minecraft Stadium
-          </h1>
+          <h1 class="loading-title">MINECRAFT STADIUM</h1>
           <p class="loading-subtitle">CS105 — Computer Graphics</p>
         </header>
 
         <section class="loading-progress-block">
-          <div class="loading-stage" id="loading-stage">Preparing assets…</div>
+          <div class="loading-stage" id="loading-stage">
+            Preparing assets...
+          </div>
           <div class="loading-bar">
             <div class="loading-bar-fill" id="loading-bar-fill"></div>
-            <div class="loading-bar-shine"></div>
           </div>
           <div class="loading-percent" id="loading-percent">0%</div>
         </section>
 
         <section class="loading-tips">
-          <h3 class="loading-tips-title">🎮 STADIUM CONTROLS</h3>
+          <h3 class="loading-tips-title">STADIUM CONTROLS</h3>
 
           <div class="tips-grid">
             <div class="tips-group">

@@ -1,40 +1,50 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=VT323&display=swap");
+
+/* ============================================================
+   MINECRAFT-STYLE BASE
+   No transparency on UI surfaces. Pixel-perfect rendering everywhere.
+   ============================================================ */
 
 :root {
-  --color-primary: #7c3aed;
-  --color-secondary: #a78bfa;
-  --color-cta: #f43f5e;
-  --color-accent: #22d3ee;
-  --color-success: #10b981;
-  --color-background: #0f0f23;
-  --color-text: #e2e8f0;
-  --color-text-dim: #94a3b8;
-  --space-xs: 4px;
-  --space-sm: 8px;
+  --mc-text: #ffffff;
+  --mc-text-shadow: #3f3f3f;
+  --mc-text-yellow: #ffff55;
+  --mc-text-yellow-shadow: #3f3f15;
+  --mc-text-gray: #a0a0a0;
+  --mc-text-gold: #ffaa00;
+  --mc-text-green: #55ff55;
+  --mc-bg-panel: #232323; /* dark slate behind dirt overlays */
+  --mc-bg-panel-border-light: #555555;
+  --mc-bg-panel-border-dark: #1a1a1a;
+  --mc-bar-bg: #4a4a4a;
+  --mc-bar-fill: #80b85c; /* classic Minecraft loading green */
+  --mc-bar-fill-hi: #a4db80;
+  --mc-bar-fill-lo: #5c8c40;
+  --mc-bar-border: #000000;
 }
 
 body {
   margin: 0;
   font-family: "Be Vietnam Pro", sans-serif;
-  color: var(--color-text);
-  background-color: var(--color-background);
+  color: var(--mc-text);
+  background-color: #000;
   overflow: hidden;
 }
 
 canvas {
   position: absolute;
-  image-rendering: -moz-crisp-edges; /* Firefox */
-  image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
-  image-rendering: pixelated; /* Chrome */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
 }
 
 #background {
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  image-rendering: -moz-crisp-edges; /* Firefox */
-  image-rendering: -webkit-crisp-edges; /* Webkit (Safari) */
-  image-rendering: pixelated; /* Chrome */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
 }
 
 .fullscreen {
@@ -48,9 +58,8 @@ canvas {
 }
 
 /* ============================================================
-   LOADING OVERLAY
-   Sits above the canvas while assets + the world are loading.
-   Toggle visibility with the `.active` class.
+   LOADING OVERLAY  —  Vanilla Minecraft style
+   Solid dirt-tile background, pixel font, no blur, no transparency.
    ============================================================ */
 
 #loading-overlay {
@@ -60,219 +69,185 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* Dirt-tile background, pixelated. Repeats the 16×16 dirt PNG. */
+  background-color: #6e5532;
+  background-image: url("src/resources/gui/background.png");
+  background-repeat: repeat;
+  background-size: 32px 32px; /* 2× nearest-neighbour upscale for visibility */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+
+  /* Darken the dirt with an overlay tint, matching vanilla Minecraft. */
+  box-shadow: inset 0 0 0 9999px rgba(15, 15, 15, 0.55);
+
   opacity: 0;
   visibility: hidden;
-  pointer-events: none;
   transition:
-    opacity 350ms ease,
-    visibility 0s linear 350ms;
+    opacity 250ms ease,
+    visibility 0s linear 250ms;
 }
 
 #loading-overlay.active {
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
   transition:
-    opacity 250ms ease,
+    opacity 200ms ease,
     visibility 0s linear 0s;
-}
-
-/* Animated gradient backdrop */
-.loading-backdrop {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      ellipse at top,
-      rgba(124, 58, 237, 0.35) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse at bottom right,
-      rgba(34, 211, 238, 0.25) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at bottom left,
-      rgba(244, 63, 94, 0.18) 0%,
-      transparent 55%
-    ),
-    linear-gradient(135deg, #050516 0%, #0f0f23 50%, #1a1a3e 100%);
-  background-size: 200% 200%;
-  animation: loading-bg-pan 18s ease-in-out infinite;
-}
-
-@keyframes loading-bg-pan {
-  0%,
-  100% {
-    background-position:
-      0% 0%,
-      100% 100%,
-      0% 100%,
-      0% 0%;
-  }
-  50% {
-    background-position:
-      50% 50%,
-      50% 50%,
-      50% 50%,
-      100% 100%;
-  }
 }
 
 .loading-content {
   position: relative;
-  width: min(960px, 92vw);
-  max-height: 92vh;
-  padding: 36px 44px;
+  width: min(960px, 94vw);
+  max-height: 96vh;
+  padding: 28px 36px 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  background: rgba(15, 15, 35, 0.72);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(124, 58, 237, 0.18) inset;
+  align-items: center;
+  gap: 18px;
+  font-family: "VT323", "Courier New", monospace;
 }
 
-/* Header */
+/* Mojang-style "Did you know" tip at the top */
+.mc-tip-banner {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 24px;
+  color: var(--mc-text-yellow);
+  text-shadow: 2px 2px 0 var(--mc-text-yellow-shadow);
+  letter-spacing: 1px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.mc-tip-prefix {
+  color: var(--mc-text);
+  text-shadow: 2px 2px 0 var(--mc-text-shadow);
+  margin-right: 8px;
+}
+
+/* Big pixelated title */
 .loading-header {
   text-align: center;
+  margin-top: 4px;
 }
 
 .loading-title {
   margin: 0;
-  font-family: "Montserrat", sans-serif;
-  font-weight: 900;
-  font-size: 38px;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #fff 0%, #a78bfa 60%, #22d3ee 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(167, 139, 250, 0.35);
-}
-
-.title-emoji {
-  -webkit-text-fill-color: initial;
-  filter: drop-shadow(0 2px 8px rgba(244, 63, 94, 0.4));
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: 400;
+  font-size: 58px;
+  letter-spacing: 4px;
+  color: var(--mc-text);
+  text-shadow: 4px 4px 0 var(--mc-text-shadow);
+  line-height: 1;
 }
 
 .loading-subtitle {
-  margin: 6px 0 0;
-  font-size: 13px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--color-text-dim);
-  font-weight: 600;
+  margin: 8px 0 0;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--mc-text-gray);
+  text-shadow: 2px 2px 0 var(--mc-text-shadow);
 }
 
-/* Progress block */
+/* Progress block: stage label, gray bar with green fill, percentage */
 .loading-progress-block {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin: 4px 0 4px;
 }
 
 .loading-stage {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-accent);
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 24px;
+  color: var(--mc-text-gold);
+  text-shadow: 2px 2px 0 var(--mc-text-shadow);
   letter-spacing: 1px;
-  text-transform: uppercase;
   min-height: 1.2em;
 }
 
+/* Loading bar in vanilla Minecraft "Loading terrain..." style: a solid gray
+   trough with a 1-pixel black border, filled with a flat green tone with
+   light/dark highlight rows for the chunky pixel-art look. */
 .loading-bar {
   position: relative;
-  width: 100%;
+  width: 380px;
   height: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
+  background: var(--mc-bar-bg);
+  border: 2px solid var(--mc-bar-border);
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated;
 }
 
 .loading-bar-fill {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0%;
-  background: linear-gradient(
-    90deg,
-    #7c3aed 0%,
-    #a78bfa 35%,
-    #22d3ee 70%,
-    #10b981 100%
+  background: var(--mc-bar-fill);
+  /* Two horizontal bands of slightly different green for chunky look */
+  background-image: linear-gradient(
+    to bottom,
+    var(--mc-bar-fill-hi) 0%,
+    var(--mc-bar-fill-hi) 30%,
+    var(--mc-bar-fill) 30%,
+    var(--mc-bar-fill) 70%,
+    var(--mc-bar-fill-lo) 70%,
+    var(--mc-bar-fill-lo) 100%
   );
-  border-radius: 999px;
-  transition: width 220ms ease-out;
-  box-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
-}
-
-.loading-bar-shine {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.22) 50%,
-    transparent 70%
-  );
-  background-size: 200% 100%;
-  animation: bar-shine 1.6s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes bar-shine {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  transition: width 200ms linear;
 }
 
 .loading-percent {
-  font-family: "Montserrat", sans-serif;
-  font-weight: 800;
-  font-size: 22px;
-  color: #fff;
-  letter-spacing: 1px;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 26px;
+  color: var(--mc-text);
+  text-shadow: 2px 2px 0 var(--mc-text-shadow);
+  letter-spacing: 2px;
 }
 
-/* Tips Grid */
+/* Tips grid styled as a single Minecraft-style raised panel */
+.loading-tips {
+  width: 100%;
+  background: var(--mc-bg-panel);
+  border: 2px solid var(--mc-bg-panel-border-dark);
+  box-shadow:
+    inset 2px 2px 0 var(--mc-bg-panel-border-light),
+    inset -2px -2px 0 var(--mc-bg-panel-border-dark);
+  padding: 14px 18px 16px;
+}
+
 .loading-tips-title {
-  margin: 0 0 14px 0;
-  font-family: "Montserrat", sans-serif;
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 2.5px;
-  color: var(--color-cta);
+  margin: 0 0 12px;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: var(--mc-text-yellow);
+  text-shadow: 2px 2px 0 var(--mc-text-yellow-shadow);
   text-align: center;
-  text-shadow: 0 0 12px rgba(244, 63, 94, 0.35);
 }
 
 .tips-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
+  gap: 18px;
 }
 
 .tips-group h4 {
-  margin: 0 0 10px 0;
-  font-family: "Montserrat", sans-serif;
-  font-weight: 700;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: 400;
+  font-size: 18px;
   letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--color-secondary);
-  border-bottom: 1px solid rgba(167, 139, 250, 0.25);
-  padding-bottom: 6px;
+  color: var(--mc-text-gold);
+  text-shadow: 2px 2px 0 var(--mc-text-shadow);
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
 }
 
 .control-row {
@@ -280,9 +255,11 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  margin-bottom: 5px;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 18px;
+  color: var(--mc-text);
+  text-shadow: 1px 1px 0 var(--mc-text-shadow);
 }
 
 .control-row:last-child {
@@ -296,47 +273,42 @@ canvas {
 }
 
 .key-sep {
-  font-size: 11px;
-  color: var(--color-text-dim);
+  font-size: 16px;
+  color: var(--mc-text-gray);
   margin: 0 2px;
 }
 
 .key-cap {
   display: inline-block;
-  min-width: 14px;
-  height: 20px;
+  min-width: 18px;
+  height: 22px;
   line-height: 20px;
-  padding: 0 7px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-bottom: 3px solid rgba(124, 58, 237, 0.55);
-  border-radius: 5px;
-  font-family: "Montserrat", sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  text-align: center;
+  padding: 0 6px;
+  background: #6a6a6a;
+  border: 2px solid #2a2a2a;
   box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  letter-spacing: 0.5px;
+    inset 1px 1px 0 #909090,
+    inset -1px -1px 0 #3a3a3a;
+  border-radius: 0;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 16px;
+  font-weight: 400;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #2a2a2a;
+  text-align: center;
+  letter-spacing: 1px;
 }
 
 .key-cap.font-wide {
-  min-width: 38px;
+  min-width: 42px;
 }
 
 .control-desc {
-  color: var(--color-text);
-  font-family: "Be Vietnam Pro", sans-serif;
-  opacity: 0.92;
+  color: #dddddd;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 18px;
+  text-shadow: 1px 1px 0 var(--mc-text-shadow);
   text-align: right;
-  font-weight: 600;
-  font-size: 11.5px;
   flex: 1;
 }
 
@@ -345,19 +317,22 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--color-text-dim);
-  letter-spacing: 0.5px;
+  gap: 10px;
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 20px;
+  color: var(--mc-text-gray);
+  text-shadow: 1px 1px 0 var(--mc-text-shadow);
+  letter-spacing: 1px;
+  margin-top: 2px;
 }
 
 .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(167, 139, 250, 0.25);
-  border-top-color: var(--color-secondary);
+  width: 12px;
+  height: 12px;
+  border: 2px solid #444;
+  border-top-color: var(--mc-text);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.9s linear infinite;
 }
 
 @keyframes spin {
@@ -366,15 +341,18 @@ canvas {
   }
 }
 
-/* Responsive — single column on narrow viewports */
+/* Responsive */
 @media (max-width: 720px) {
   .tips-grid {
     grid-template-columns: 1fr;
   }
   .loading-content {
-    padding: 24px 22px;
+    padding: 18px 18px 14px;
   }
   .loading-title {
-    font-size: 28px;
+    font-size: 40px;
+  }
+  .loading-bar {
+    width: 280px;
   }
 }

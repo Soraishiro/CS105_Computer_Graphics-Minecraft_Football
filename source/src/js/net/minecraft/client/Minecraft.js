@@ -224,12 +224,21 @@ export default class Minecraft {
       let STAND_TIERS = 6;
       let STAND_SLOPE = 2;
 
+      // Tunnel corridor extent — must match StadiumGenerator's TUNNEL_*.
+      // The corridor punches through the south stand from the pitch edge all
+      // the way out past the footprint, so no seats (and no spectators) live
+      // inside it.
+      let footprintZ = halfWidth + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3; // 45
+      let TUNNEL_INNER_Z = -(halfWidth + 2); // -23
+      let TUNNEL_OUTER_Z = -(footprintZ + 4); // -49
+      let TUNNEL_HALF_W = 5;
+
       // Scan ALL FOUR stands. The seat/wall/aisle filters must mirror
       // StadiumGenerator._generateStands so spectators only land on real seat blocks.
       let seatPositions = [];
       let footprintX =
         halfLength + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
-      let footprintZ = halfWidth + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
+      // footprintZ already declared above with the tunnel constants.
 
       for (let wx = -footprintX; wx <= footprintX; wx++) {
         for (let wz = -footprintZ; wz <= footprintZ; wz++) {
@@ -248,8 +257,17 @@ export default class Minecraft {
 
           let isGoalSide = dX > dZ;
 
-          // Tunnel gate hole on -Z side — matches StadiumGenerator line 266
-          if (!isGoalSide && wz < 0 && Math.abs(wx) <= 5 && wz >= -35) continue;
+          // Tunnel corridor on the south side — matches StadiumGenerator's
+          // _isTunnelCorridor. The corridor now runs the full length of the
+          // tunnel so spectators don't spawn where the tunnel structure
+          // would physically occlude them from the pitch.
+          if (
+            wz >= TUNNEL_OUTER_Z &&
+            wz <= TUNNEL_INNER_Z &&
+            Math.abs(wx) <= TUNNEL_HALF_W
+          ) {
+            continue;
+          }
 
           // Side boundary walls — matches StadiumGenerator line 272 (edgeDist === 2)
           if (Math.abs(dX - dZ) === 2) continue;
