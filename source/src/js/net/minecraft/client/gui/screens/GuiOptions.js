@@ -76,27 +76,13 @@ export default class GuiOptions extends GuiScreen {
       ),
     );
     this.buttonList.push(
-      new GuiSwitchButton(
-        "Soundtrack Music",
-        settings.soundtrack,
-        this.width / 2 - 100,
-        y + 24 * 4,
-        200,
-        20,
-        (value) => {
-          settings.soundtrack = value;
-          this.minecraft.soundManager.toggleSoundtrack(value);
-        },
-      ),
-    );
-    this.buttonList.push(
       new GuiSliderButton(
         "Music Volume",
         settings.musicVolume,
         0,
         100,
         this.width / 2 - 100,
-        y + 24 * 5,
+        y + 24 * 4,
         200,
         20,
         (value) => {
@@ -109,7 +95,7 @@ export default class GuiOptions extends GuiScreen {
       new GuiButton(
         "Controls...",
         this.width / 2 - 100,
-        y + 24 * 6,
+        y + 24 * 5,
         200,
         20,
         () => {
@@ -122,7 +108,7 @@ export default class GuiOptions extends GuiScreen {
       new GuiButton(
         "Lighting Settings...",
         this.width / 2 - 100,
-        y + 24 * 7,
+        y + 24 * 6,
         200,
         20,
         () => {
@@ -135,7 +121,7 @@ export default class GuiOptions extends GuiScreen {
       new GuiButton(
         "Done",
         this.width / 2 - 100,
-        y + 24 * 8 + 10,
+        y + 24 * 7 + 10,
         200,
         20,
         () => {

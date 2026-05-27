@@ -183,12 +183,6 @@ export default class SoundManager {
 
   playNextTrack() {
     if (this._trackChanging) return;
-    if (this.minecraft && !this.minecraft.settings.soundtrack) {
-      if (this.soundtrackAudio && this.soundtrackAudio.isPlaying) {
-        this.soundtrackAudio.stop();
-      }
-      return;
-    }
     this._trackChanging = true;
 
     if (this.currentTrackIndex >= this.playlist.length) {
@@ -267,23 +261,6 @@ export default class SoundManager {
     const v = Math.max(0, Math.min(1, value / 100));
     if (this.soundtrackAudio) {
       this.soundtrackAudio.setVolume(v);
-    }
-  }
-
-  toggleSoundtrack(enabled) {
-    if (!this.isCreated()) return;
-    if (!enabled) {
-      if (this.soundtrackAudio && this.soundtrackAudio.isPlaying) {
-        this.soundtrackAudio.stop();
-      }
-    } else {
-      if (
-        this.soundtrackAudio &&
-        !this.soundtrackAudio.isPlaying &&
-        !this._trackChanging
-      ) {
-        this.playNextTrack();
-      }
     }
   }
 

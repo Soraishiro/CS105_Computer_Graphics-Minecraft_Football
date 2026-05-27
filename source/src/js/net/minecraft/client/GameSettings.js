@@ -17,8 +17,7 @@ export default class GameSettings {
     this.viewDistance = 8;
     this.debugOverlay = false;
     this.serverAddress = "server.labystudio.de";
-    this.soundtrack = true;
-    this.musicVolume = 50; // 0-100, applied as 0-1 to soundtrackAudio
+    this.musicVolume = 50; // 0-100; set to 0 to mute the soundtrack
 
     // Lighting settings
     this.enableDayNightLighting = true;
