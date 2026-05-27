@@ -307,6 +307,7 @@ export default class Minecraft {
             tier: tier, // 0 = front row, higher = back rows
             wx: wx, // integer block coords for spacing-conflict checks
             wz: wz,
+            isGoalSide: isGoalSide,
           });
         }
       }
@@ -331,19 +332,34 @@ export default class Minecraft {
       // with predictable gaps between mobs.
       const MAX_SPECTATORS = 500;
       const occupied = new Set(); // "wx,wz,tier" of already-accepted seats
-      const conflicts = (wx, wz, tier) => {
+      // Per-stand-face Z-step direction so the "directly behind on next tier"
+      // check works on all four stands. Each stand has tiers stepping AWAY
+      // from the pitch — that's +z for north stand, -z for south, etc.
+      const stepDirZ = (wz) => (wz > 0 ? +2 : wz < 0 ? -2 : 0);
+      const stepDirX = (wx) => (wx > 0 ? +2 : wx < 0 ? -2 : 0);
+      const conflicts = (wx, wz, tier, isGoalSide) => {
+        // (1) Same-tier 8-neighbour spacing — no touching mobs in a row.
         for (let dx = -1; dx <= 1; dx++) {
           for (let dz = -1; dz <= 1; dz++) {
             if (dx === 0 && dz === 0) continue;
             if (occupied.has(`${wx + dx},${wz + dz},${tier}`)) return true;
           }
         }
+        // (2) Same-column tier-above check — don't put a mob directly in
+        // front of an already-placed mob on the next-back tier, otherwise
+        // the back mob's face peeks through the front mob's leg gap from
+        // the pitch-side camera angle.
+        const backDz = isGoalSide ? 0 : stepDirZ(wz);
+        const backDx = isGoalSide ? stepDirX(wx) : 0;
+        if (occupied.has(`${wx + backDx},${wz + backDz},${tier + 1}`)) {
+          return true;
+        }
         return false;
       };
       let selectedSeats = [];
       for (const seat of seatPositions) {
         if (selectedSeats.length >= MAX_SPECTATORS) break;
-        if (conflicts(seat.wx, seat.wz, seat.tier)) continue;
+        if (conflicts(seat.wx, seat.wz, seat.tier, seat.isGoalSide)) continue;
         occupied.add(`${seat.wx},${seat.wz},${seat.tier}`);
         selectedSeats.push(seat);
       }
