@@ -174,6 +174,7 @@ export default class PlayerRenderer extends EntityRenderer {
             // background of the correct base colour here.
             const BASE_COLORS = {
               enderman: "#0c0c0c", // near-black ender body
+              skeleton: "#c6c6c6", // bone-white skeleton body
             };
             if (BASE_COLORS[mobName]) {
               tex = this._compositeOnBase(tex, BASE_COLORS[mobName]);
