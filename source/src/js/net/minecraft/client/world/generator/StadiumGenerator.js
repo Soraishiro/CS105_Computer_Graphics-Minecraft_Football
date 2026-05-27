@@ -445,26 +445,33 @@ export default class StadiumGenerator {
 
     const ROOF_Y = 5; // 4 blocks of headroom
     const WALL_TOP = ROOF_Y - 1; // y=4 — top course of cobble
-    // Torch every 4 blocks along each wall, at chest height.
-    const torchBay = Math.abs(wz) % 4 === 0;
+    // Recessed wall lamp every 4 blocks along each wall, at chest height.
+    const lampBay = Math.abs(wz) % 4 === 0;
+    const LAMP_Y = 3;
 
     // ----- FLOOR ----- clean white pitch line.
     if (absX <= 4) {
       chunk.setBlockAt(lx, sl, lz, BlockRegistry.PITCH_LINE.getId());
     }
 
-    // ----- WALLS ----- cobblestone with a single torch every 4 blocks.
-    if (absX === 4) {
+    // ----- WALLS ----- cobblestone with REDSTONE_LAMP_ON inset every 4 blocks
+    // at chest height. The lamp REPLACES a wall block so it sits flush like
+    // a real architectural sconce instead of a free-standing torch.
+    if (absX === 4 && !portalOpen) {
       for (let y = 1; y <= WALL_TOP; y++) {
-        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
+        const isLamp = lampBay && y === LAMP_Y;
+        chunk.setBlockAt(
+          lx,
+          sl + y,
+          lz,
+          isLamp
+            ? BlockRegistry.REDSTONE_LAMP_ON.getId()
+            : BlockRegistry.COBBLE_STONE.getId(),
+        );
       }
     }
-    // Torch placed in the interior, hanging on the inner wall face.
-    if (torchBay && absX === 3 && !portalOpen) {
-      chunk.setBlockAt(lx, sl + 3, lz, BlockRegistry.TORCH.getId());
-    }
 
-    // ----- CEILING ----- wood planks. No LED rings — the torches light it.
+    // ----- CEILING ----- wood planks. Wall sconces light the corridor.
     if (absX <= 4 && !portalOpen) {
       chunk.setBlockAt(lx, sl + ROOF_Y, lz, BlockRegistry.WOOD.getId());
     }
@@ -486,23 +493,27 @@ export default class StadiumGenerator {
 
     // ----- ENTRANCE GATE at the outermost back row -----
     // Two cobblestone pillars at |wx| = 4 flank a 7-block-wide opening,
-    // crowned by a 1-block-thick cobblestone lintel.
+    // crowned by a 1-block-thick cobblestone lintel. Each column is capped
+    // by a REDSTONE_LAMP_ON block for an architectural "beacon" topper.
     if (wz === this.VESTIBULE_OUTER_Z) {
       if (absX === 4) {
-        // Side columns: 5 blocks of cobblestone for an imposing classic gate.
-        for (let y = 1; y <= 5; y++) {
+        // Side columns: 4 blocks of cobblestone + 1 lamp at the top of the
+        // column for an imposing classic gate with built-in lighting.
+        for (let y = 1; y <= 4; y++) {
           chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
         }
-        // Cap-stone torch on each side of the gate.
-        chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.TORCH.getId());
+        chunk.setBlockAt(
+          lx,
+          sl + 5,
+          lz,
+          BlockRegistry.REDSTONE_LAMP_ON.getId(),
+        );
+        // Cap-stone above the lamp for a finished cornice.
+        chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.COBBLE_STONE.getId());
       } else if (absX < 4) {
         // Lintel across the opening at y=5.
         chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.COBBLE_STONE.getId());
       }
-    }
-    // Torches flanking the gate from inside (one block in from the columns).
-    if (wz === this.VESTIBULE_OUTER_Z + 1 && absX === 3) {
-      chunk.setBlockAt(lx, sl + 3, lz, BlockRegistry.TORCH.getId());
     }
   }
 
