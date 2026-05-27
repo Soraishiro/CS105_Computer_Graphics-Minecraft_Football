@@ -444,36 +444,28 @@ export default class StadiumGenerator {
     const portalOpen = wz <= this.TUNNEL_OUTER_Z + 1; // last 2 rows: open sky
 
     const ROOF_Y = 5; // 4 blocks of headroom
-    const WALL_TOP = ROOF_Y - 1; // y=4 — top course of cobble
-    // Recessed wall lamp every 4 blocks along each wall, at chest height.
-    const lampBay = Math.abs(wz) % 4 === 0;
-    const LAMP_Y = 3;
+    const WALL_TOP = ROOF_Y - 1;
 
-    // ----- FLOOR ----- clean white pitch line.
+    // Whole tunnel interior — floor, walls, ceiling — is REDSTONE_LAMP_ON
+    // so the corridor reads as a warm luminous passage end-to-end. Single
+    // block type for the whole tube, completely classic-vanilla aesthetic.
+    const LAMP = BlockRegistry.REDSTONE_LAMP_ON.getId();
+
+    // ----- FLOOR -----
     if (absX <= 4) {
-      chunk.setBlockAt(lx, sl, lz, BlockRegistry.PITCH_LINE.getId());
+      chunk.setBlockAt(lx, sl, lz, LAMP);
     }
 
-    // ----- WALLS ----- cobblestone with REDSTONE_LAMP_ON inset every 4 blocks
-    // at chest height. The lamp REPLACES a wall block so it sits flush like
-    // a real architectural sconce instead of a free-standing torch.
+    // ----- WALLS -----
     if (absX === 4 && !portalOpen) {
       for (let y = 1; y <= WALL_TOP; y++) {
-        const isLamp = lampBay && y === LAMP_Y;
-        chunk.setBlockAt(
-          lx,
-          sl + y,
-          lz,
-          isLamp
-            ? BlockRegistry.REDSTONE_LAMP_ON.getId()
-            : BlockRegistry.COBBLE_STONE.getId(),
-        );
+        chunk.setBlockAt(lx, sl + y, lz, LAMP);
       }
     }
 
-    // ----- CEILING ----- wood planks. Wall sconces light the corridor.
+    // ----- CEILING -----
     if (absX <= 4 && !portalOpen) {
-      chunk.setBlockAt(lx, sl + ROOF_Y, lz, BlockRegistry.WOOD.getId());
+      chunk.setBlockAt(lx, sl + ROOF_Y, lz, LAMP);
     }
   }
 
@@ -488,31 +480,57 @@ export default class StadiumGenerator {
     let sl = this.seaLevel;
     let absX = Math.abs(wx);
 
-    // ----- FLAT PLAZA FLOOR ----- same pitch-line as the tunnel for continuity.
-    chunk.setBlockAt(lx, sl, lz, BlockRegistry.PITCH_LINE.getId());
+    // ----- PLAZA FLOOR -----
+    // Centre path of red carpet runs from the tunnel mouth to the gate so the
+    // approach reads as a clear corridor instead of an empty courtyard.
+    // Surrounded by pitch-line (white) on either side.
+    const isPath = absX <= 2;
+    chunk.setBlockAt(
+      lx,
+      sl,
+      lz,
+      isPath
+        ? BlockRegistry.SEAT_RED.getId()
+        : BlockRegistry.PITCH_LINE.getId(),
+    );
 
-    // ----- ENTRANCE GATE at the outermost back row -----
-    // Two cobblestone pillars at |wx| = 4 flank a 7-block-wide opening,
-    // crowned by a 1-block-thick cobblestone lintel. Each column is capped
-    // by a REDSTONE_LAMP_ON block for an architectural "beacon" topper.
+    // ----- TORII-STYLE ENTRANCE GATE at the outermost back row -----
+    // Stadium-themed two-tone torii:
+    //   • Red pillars (SEAT_RED) at |wx| = 3 — 5 blocks tall.
+    //   • Nuki (lower crossbeam) at y=4, |wx| <= 2 — red, runs INSIDE pillars.
+    //   • Shimaki (upper beam) at y=5, |wx| <= 4 — red, extends 1 block past
+    //     each pillar.
+    //   • Kasagi (top beam) at y=6, |wx| <= 5 — red, extends 1 more block.
+    //   • Kasagi end caps at |wx| = 5 in SEAT_GREEN (teal) — the classic
+    //     torii "drooping end" detail, recoloured to stadium teal.
+    //   • Gakuzuka (central post) — 1 block at y=5, wx=0 — connects the two
+    //     horizontal beams in the centre.
     if (wz === this.VESTIBULE_OUTER_Z) {
-      if (absX === 4) {
-        // Side columns: 4 blocks of cobblestone + 1 lamp at the top of the
-        // column for an imposing classic gate with built-in lighting.
+      // Pillars
+      if (absX === 3) {
         for (let y = 1; y <= 4; y++) {
-          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.SEAT_RED.getId());
         }
+      }
+      // Nuki (y=4, between pillars)
+      if (absX <= 2) {
+        chunk.setBlockAt(lx, sl + 4, lz, BlockRegistry.SEAT_RED.getId());
+      }
+      // Shimaki (y=5, span ±4)
+      if (absX <= 4) {
+        chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.SEAT_RED.getId());
+      }
+      // Kasagi (y=6, span ±5 with teal end caps)
+      if (absX <= 5) {
+        const isEndCap = absX === 5;
         chunk.setBlockAt(
           lx,
-          sl + 5,
+          sl + 6,
           lz,
-          BlockRegistry.REDSTONE_LAMP_ON.getId(),
+          isEndCap
+            ? BlockRegistry.SEAT_GREEN.getId()
+            : BlockRegistry.SEAT_RED.getId(),
         );
-        // Cap-stone above the lamp for a finished cornice.
-        chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.COBBLE_STONE.getId());
-      } else if (absX < 4) {
-        // Lintel across the opening at y=5.
-        chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.COBBLE_STONE.getId());
       }
     }
   }
