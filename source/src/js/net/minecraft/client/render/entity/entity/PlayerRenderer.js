@@ -172,9 +172,25 @@ export default class PlayerRenderer extends EntityRenderer {
             // dark body rendered underneath. We don't draw that
             // base layer, so we composite the texture onto a flat
             // background of the correct base colour here.
+            // Every mob texture gets composited onto a flat body-colour base
+            // so transparent pixels in the UV-mapped body regions read as
+            // solid body instead of as holes in the model. The base colour
+            // is the dominant body tone of the canonical vanilla skin.
             const BASE_COLORS = {
               enderman: "#0c0c0c", // near-black ender body
-              skeleton: "#c6c6c6", // bone-white skeleton body
+              skeleton: "#c6c6c6", // bone-white
+              zombie: "#3a5e3a", // zombie green
+              creeper: "#3a5e3a", // creeper green
+              villager: "#5a3d28", // brown robe
+              cow: "#643f1c", // dark brown
+              pig: "#e89090", // pink
+              sheep: "#d8b8a8", // sheared-sheep skin tone
+              chicken: "#e8e8e8", // white feathers
+              wolf: "#c8c8c8", // light grey
+              ocelot: "#c89048", // tan
+              squid: "#1a3550", // dark blue
+              slime: "#7cb850", // lime green
+              magmacube: "#5a0e0e", // dark red
             };
             if (BASE_COLORS[mobName]) {
               tex = this._compositeOnBase(tex, BASE_COLORS[mobName]);
