@@ -354,14 +354,16 @@ export default class Minecraft {
       // reads smoothly. Tall mobs (enderman, skeleton, zombie, villager) are
       // still preferred near the back; small mobs (chicken, slime, magmacube,
       // ocelot) near the front.
+      // Slime and magmacube are excluded everywhere — their single-cube
+      // model has no face/eye detail and reads as a plain coloured block,
+      // not a creature. Only mobs with a recognisable creature silhouette
+      // are used as spectators.
       const TIER_POOLS = [
-        // Tier 0 (front row): only mobs with a clear vertical silhouette
-        // from a low camera angle. Horizontal quadrupeds (ocelot, wolf)
-        // are excluded here because their flat 4×12 body becomes an
-        // unreadable "slab" when viewed from above-front.
-        ["chicken", "slime", "magmacube", "chicken", "slime"],
-        // Tier 1: small-medium quadrupeds — far enough back that the body
-        // shape reads correctly.
+        // Tier 0 (front row): small upright shapes only — no horizontal
+        // quadrupeds whose 4-deep body becomes an unreadable slab from a
+        // low camera angle.
+        ["chicken", "chicken", "pig"],
+        // Tier 1: small-medium quadrupeds
         ["pig", "wolf", "ocelot", "chicken", "cow"],
         // Tier 2: medium mobs
         ["cow", "sheep", "squid", "creeper", "pig", "wolf"],

@@ -127,7 +127,8 @@ export class BlockRegistry {
       117,
       StadiumTextures.TUNNEL_WALL_BLOCK,
     );
-    BlockRegistry.TUNNEL_NEON = new BlockTurf(
+    // Glowing LED neon strip — emissive so it stays lit when wedged into walls.
+    BlockRegistry.TUNNEL_NEON = new BlockRedstoneLampOn(
       118,
       StadiumTextures.TUNNEL_NEON_STRIP_BLOCK,
     );
@@ -143,19 +144,20 @@ export class BlockRegistry {
       121,
       StadiumTextures.METAL_RAILING_BLOCK,
     );
-    BlockRegistry.SCOREBOARD = new BlockTurf(
+    // Stadium screens / LED boards are self-illuminating signage.
+    BlockRegistry.SCOREBOARD = new BlockRedstoneLampOn(
       122,
       StadiumTextures.SCOREBOARD_SCREEN_BLOCK,
     );
-    BlockRegistry.LED_BOARD_RED = new BlockTurf(
+    BlockRegistry.LED_BOARD_RED = new BlockRedstoneLampOn(
       123,
       StadiumTextures.LED_BOARD_RED,
     );
-    BlockRegistry.LED_BOARD_PURPLE = new BlockTurf(
+    BlockRegistry.LED_BOARD_PURPLE = new BlockRedstoneLampOn(
       124,
       StadiumTextures.LED_BOARD_PURPLE,
     );
-    BlockRegistry.LED_TEXT_GOAL = new BlockTurf(
+    BlockRegistry.LED_TEXT_GOAL = new BlockRedstoneLampOn(
       125,
       StadiumTextures.LED_TEXT_GOAL_PANEL,
     );
@@ -163,7 +165,8 @@ export class BlockRegistry {
       126,
       StadiumTextures.DECORATIVE_BANNER_BLOCK,
     );
-    BlockRegistry.FLOODLIGHT = new BlockTurf(
+    // Floodlight panels emit the brightest light in the stadium.
+    BlockRegistry.FLOODLIGHT = new BlockRedstoneLampOn(
       127,
       StadiumTextures.FLOODLIGHT_PANEL_BLOCK,
     );
@@ -186,7 +189,8 @@ export class BlockRegistry {
       131,
       StadiumTextures.TUNNEL_ARCH_SEGMENT,
     );
-    BlockRegistry.TUNNEL_LED_RING = new BlockTurf(
+    // Recessed ceiling downlight — must glow even when surrounded by ROOF_PANEL.
+    BlockRegistry.TUNNEL_LED_RING = new BlockRedstoneLampOn(
       132,
       StadiumTextures.TUNNEL_LED_RING,
     );
