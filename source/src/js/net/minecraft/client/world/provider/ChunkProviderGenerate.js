@@ -1,5 +1,5 @@
 import ChunkProvider from "/src/js/net/minecraft/client/world/provider/ChunkProvider.js";
-import StadiumGenerator from "/src/js/net/minecraft/client/world/generator/StadiumGenerator.js?v=10";
+import StadiumGenerator from "/src/js/net/minecraft/client/world/generator/StadiumGenerator.js?v=11";
 import Random from "/src/js/net/minecraft/util/Random.js";
 
 export default class ChunkProviderGenerate extends ChunkProvider {

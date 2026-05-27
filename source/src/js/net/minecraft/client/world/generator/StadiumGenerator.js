@@ -494,42 +494,66 @@ export default class StadiumGenerator {
         : BlockRegistry.PITCH_LINE.getId(),
     );
 
-    // ----- TORII-STYLE ENTRANCE GATE at the outermost back row -----
-    // Stadium-themed two-tone torii:
-    //   • Red pillars (SEAT_RED) at |wx| = 3 — 5 blocks tall.
-    //   • Nuki (lower crossbeam) at y=4, |wx| <= 2 — red, runs INSIDE pillars.
-    //   • Shimaki (upper beam) at y=5, |wx| <= 4 — red, extends 1 block past
-    //     each pillar.
-    //   • Kasagi (top beam) at y=6, |wx| <= 5 — red, extends 1 more block.
-    //   • Kasagi end caps at |wx| = 5 in SEAT_GREEN (teal) — the classic
-    //     torii "drooping end" detail, recoloured to stadium teal.
-    //   • Gakuzuka (central post) — 1 block at y=5, wx=0 — connects the two
-    //     horizontal beams in the centre.
-    if (wz === this.VESTIBULE_OUTER_Z) {
-      // Pillars
-      if (absX === 3) {
-        for (let y = 1; y <= 4; y++) {
-          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.SEAT_RED.getId());
+    // ----- CONCEPT #1: ROMAN TRIUMPHAL ARCH (Arch of Constantine) -----
+    // 13 wide × 8 tall stone facade at the outer mouth.
+    //
+    //   wx:  -6 -5 -4 -3 -2 -1  0  1  2  3  4  5  6     (13 cols)
+    //   y=8   .  .  .  .  .  .  .  .  .  .  .  .  .
+    //   y=7   A  A  A  A  A  A  A  A  A  A  A  A  A    attic story (PITCH_LINE)
+    //   y=6   B  B  B  B  B  B  B  B  B  B  B  B  B    main lintel (COBBLE)
+    //   y=5   B  B  B  B  .  .  .  .  .  B  B  B  B    central opening
+    //   y=4   B  N  N  B  .  .  .  .  .  B  N  N  B    side niches at y=4 (DARK)
+    //   y=3   B  .  .  B  .  .  .  .  .  B  .  .  B    side openings 2w × 3h
+    //   y=2   B  .  .  B  .  .  .  .  .  B  .  .  B
+    //   y=1   B  .  .  B  .  .  .  .  .  B  .  .  B
+    //         ^pillar    ^pier            ^pier ^pillar
+    //
+    //   • Outer pillars wx = ±6, height 1..7 (COBBLE_STONE)
+    //   • Pier dividers wx = ±3, height 1..7 (COBBLE_STONE) — split central
+    //     opening from the two side openings.
+    //   • Central opening |wx| ≤ 2, y ∈ [1..5] = AIR (5w × 5h main passage).
+    //   • Side openings  wx ∈ {-5,-4} and {4,5}, y ∈ [1..3] = AIR.
+    //   • Side niches: relief blocks at y=4 over the side openings (CONCRETE_DARK).
+    //   • Main lintel y=6 spans full width.
+    //   • Attic story y=7 in PITCH_LINE (lighter top course).
+    //   • Crown lamps at y=8 over wx ∈ {-3, 0, 3} (REDSTONE_LAMP_ON).
+    if (wz === this.VESTIBULE_OUTER_Z && absX <= 6) {
+      const isCenterOpen = absX <= 2 && wz === this.VESTIBULE_OUTER_Z;
+      const isSideOpen = absX === 4 || absX === 5;
+      const isPier = absX === 3 || absX === 6;
+      const isNiche = isSideOpen; // marker for the y=4 inset row
+
+      // Y = 1..5: opening pattern
+      for (let y = 1; y <= 5; y++) {
+        if (y <= 3 && (isCenterOpen || isSideOpen)) {
+          // Air for both central + side passages.
+          continue;
         }
+        if (y === 4 && isCenterOpen) continue; // still air in centre
+        if (y === 5 && isCenterOpen) continue; // top of central arch
+        if (y === 4 && isNiche) {
+          // Side-arch niche — dark relief inset above the side openings.
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.CONCRETE_DARK.getId());
+          continue;
+        }
+        // Everything else at y ≤ 5 in this row is stone facade.
+        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
       }
-      // Nuki (y=4, between pillars)
-      if (absX <= 2) {
-        chunk.setBlockAt(lx, sl + 4, lz, BlockRegistry.SEAT_RED.getId());
-      }
-      // Shimaki (y=5, span ±4)
-      if (absX <= 4) {
-        chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.SEAT_RED.getId());
-      }
-      // Kasagi (y=6, span ±5 with teal end caps)
-      if (absX <= 5) {
-        const isEndCap = absX === 5;
+
+      // Main lintel — full width at y=6.
+      chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.COBBLE_STONE.getId());
+
+      // Attic story at y=7 — lighter stone for visual hierarchy.
+      chunk.setBlockAt(lx, sl + 7, lz, BlockRegistry.PITCH_LINE.getId());
+
+      // Crown lamps at y=8 above the three pier/pillar centres for nighttime
+      // illumination of the arch.
+      if (wx === -3 || wx === 0 || wx === 3) {
         chunk.setBlockAt(
           lx,
-          sl + 6,
+          sl + 8,
           lz,
-          isEndCap
-            ? BlockRegistry.SEAT_GREEN.getId()
-            : BlockRegistry.SEAT_RED.getId(),
+          BlockRegistry.REDSTONE_LAMP_ON.getId(),
         );
       }
     }
