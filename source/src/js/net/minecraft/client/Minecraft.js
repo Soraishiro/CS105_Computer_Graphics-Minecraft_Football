@@ -1,44 +1,44 @@
-import Timer from '../util/Timer.js';
-import GameSettings from './GameSettings.js';
-import GameWindow from './GameWindow.js';
-import WorldRenderer from './render/WorldRenderer.js';
-import ScreenRenderer from './render/gui/ScreenRenderer.js';
-import ItemRenderer from './render/gui/ItemRenderer.js';
-import IngameOverlay from './gui/overlay/IngameOverlay.js';
-import SoundManager from './sound/SoundManager.js';
-import Block from './world/block/Block.js';
-import BoundingBox from '../util/BoundingBox.js';
-import {BlockRegistry} from './world/block/BlockRegistry.js';
-import FontRenderer from './render/gui/FontRenderer.js';
-import GrassColorizer from './render/GrassColorizer.js';
-import GuiMainMenu from './gui/screens/GuiMainMenu.js';
-import GuiLoadingScreen from './gui/screens/GuiLoadingScreen.js';
-import * as THREE from '../../../../../libraries/three.module.js';
-import ParticleRenderer from './render/particle/ParticleRenderer.js';
-import GuiChat from './gui/screens/GuiChat.js';
-import CommandHandler from './command/CommandHandler.js';
-import GuiContainerCreative from './gui/screens/container/GuiContainerCreative.js';
-import GameProfile from '../util/GameProfile.js';
-import UUID from '../util/UUID.js';
-import FocusStateType from '../util/FocusStateType.js';
-import Session from '../util/Session.js';
+import Timer from "../util/Timer.js";
+import GameSettings from "./GameSettings.js";
+import GameWindow from "./GameWindow.js";
+import WorldRenderer from "./render/WorldRenderer.js";
+import ScreenRenderer from "./render/gui/ScreenRenderer.js";
+import ItemRenderer from "./render/gui/ItemRenderer.js";
+import IngameOverlay from "./gui/overlay/IngameOverlay.js";
+import SoundManager from "./sound/SoundManager.js";
+import Block from "./world/block/Block.js";
+import BoundingBox from "../util/BoundingBox.js";
+import { BlockRegistry } from "./world/block/BlockRegistry.js";
+import FontRenderer from "./render/gui/FontRenderer.js";
+import GrassColorizer from "./render/GrassColorizer.js";
+import GuiMainMenu from "./gui/screens/GuiMainMenu.js";
+import GuiLoadingScreen from "./gui/screens/GuiLoadingScreen.js";
+import * as THREE from "../../../../../libraries/three.module.js";
+import ParticleRenderer from "./render/particle/ParticleRenderer.js";
+import GuiChat from "./gui/screens/GuiChat.js";
+import CommandHandler from "./command/CommandHandler.js";
+import GuiContainerCreative from "./gui/screens/container/GuiContainerCreative.js";
+import GameProfile from "../util/GameProfile.js";
+import UUID from "../util/UUID.js";
+import FocusStateType from "../util/FocusStateType.js";
+import Session from "../util/Session.js";
 import BallEntity from "/src/js/net/minecraft/client/entity/BallEntity.js";
 import PlayerEntity from "/src/js/net/minecraft/client/entity/PlayerEntity.js";
-import PlayerControllerMultiplayer from './network/controller/PlayerControllerMultiplayer.js';
-import World from './world/World.js';
-import ChunkProviderGenerate from './world/provider/ChunkProviderGenerate.js';
-import PlayerController from './network/controller/PlayerController.js';
-import Random from '../util/Random.js';
-import Long from '../../../../../libraries/long.js';
+import PlayerControllerMultiplayer from "./network/controller/PlayerControllerMultiplayer.js";
+import World from "./world/World.js";
+import ChunkProviderGenerate from "./world/provider/ChunkProviderGenerate.js";
+import PlayerController from "./network/controller/PlayerController.js";
+import Random from "../util/Random.js";
+import Long from "../../../../../libraries/long.js";
 
 export default class Minecraft {
-  static VERSION = '1.1.8';
-  static URL_GITHUB = 'https://github.com/labystudio/js-minecraft';
+  static VERSION = "1.1.8";
+  static URL_GITHUB = "https://github.com/labystudio/js-minecraft";
   static PROTOCOL_VERSION = 47; //758;
 
   // TODO Add to settings
   static PROXY = {
-    url: 'wss://socket.labystudio.de/minecraft/',
+    url: "wss://socket.labystudio.de/minecraft/",
   };
 
   /**
@@ -63,9 +63,9 @@ export default class Minecraft {
 
     // Load session from settings
     if (this.settings.session === null) {
-      let username = 'Player' + Math.floor(Math.random() * 100);
+      let username = "Player" + Math.floor(Math.random() * 100);
       let profile = new GameProfile(UUID.randomUUID(), username);
-      this.setSession(new Session(profile, ''));
+      this.setSession(new Session(profile, ""));
     } else {
       this.setSession(Session.fromJson(this.settings.session));
     }
@@ -158,7 +158,7 @@ export default class Minecraft {
     } else {
       // Display loading screen
       this.loadingScreen = new GuiLoadingScreen();
-      this.loadingScreen.setTitle('Building terrain...');
+      this.loadingScreen.setTitle("Building terrain...");
       this.displayScreen(this.loadingScreen);
 
       // Clear previous world
@@ -181,15 +181,26 @@ export default class Minecraft {
       // --- Setup Stadium Spectators Pre-calculation ---
       // Plain mob type names matching local vanilla textures in src/resources/mob/
       const MOB_NAMES = [
-        "cow", "pig", "sheep", "chicken", "wolf", "ocelot",
-        "villager", "creeper", "enderman", "zombie", "skeleton",
-        "squid", "slime", "magmacube"
+        "cow",
+        "pig",
+        "sheep",
+        "chicken",
+        "wolf",
+        "ocelot",
+        "villager",
+        "creeper",
+        "enderman",
+        "zombie",
+        "skeleton",
+        "squid",
+        "slime",
+        "magmacube",
       ];
 
       // Stadium geometry constants
-      let sl = 64;          // base Y of stadium surface
-      let halfLength = 30;  // half-length along X (goal sides)
-      let halfWidth = 21;   // half-width along Z (side stands)
+      let sl = 64; // base Y of stadium surface
+      let halfLength = 30; // half-length along X (goal sides)
+      let halfWidth = 21; // half-width along Z (side stands)
       let STAND_MARGIN = 9;
       let STAND_TIERS = 6;
       let STAND_SLOPE = 2;
@@ -197,15 +208,16 @@ export default class Minecraft {
       // Scan ONLY the north stand (wz > 0, opposite the tunnel which is at wz < 0)
       // North stand: dZ is the dominant direction, not a goal side.
       let seatPositions = [];
+      let maxStandZ = halfWidth + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
       for (let wx = -50; wx <= 50; wx++) {
-        for (let wz = halfWidth + STAND_MARGIN; wz <= 41; wz++) {
+        for (let wz = halfWidth + STAND_MARGIN; wz <= maxStandZ; wz++) {
           let dX = Math.abs(wx) - halfLength;
           let dZ = wz - halfWidth; // always positive (north side only)
 
           // This must be the side stand (dZ dominant), not goal-side corner
           if (dX >= dZ - 1) continue; // skip corner/goal-side overlap
 
-          let dist = dZ;
+          let dist = Math.max(dX, dZ);
           let standDist = dist - STAND_MARGIN;
           if (standDist < 0) continue;
 
@@ -218,7 +230,7 @@ export default class Minecraft {
           let span = halfLength * 2;
           let step = Math.floor(span / 4);
           let relX = wx + halfLength;
-          let isAisle = (relX > 0) && (relX < span) && (relX % step === 0);
+          let isAisle = relX > 0 && relX < span && relX % step === 0;
           if (isAisle) continue;
 
           // Y+1: place entity on TOP of the seat block surface
@@ -242,7 +254,7 @@ export default class Minecraft {
           y: seat.y,
           z: seat.z,
           mobName: mobName,
-          yawAngle: SPECTATOR_YAW
+          yawAngle: SPECTATOR_YAW,
         });
       }
 
@@ -272,7 +284,7 @@ export default class Minecraft {
           for (let i = 0; i < 6; i++) {
             let sub = new PlayerEntity(this, this.world, 200 + i);
             sub.username = "Sub " + (i + 1);
-            let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
+            let x = i < 3 ? -4.5 - i * 1.5 : 4.5 + (i - 3) * 1.5;
             let z = -20; // Standing near the tunnel
             sub.setPosition(x, this.world.getHeightAt(x, z), z);
             sub.rotationYaw = 0; // facing the pitch (+Z)
@@ -297,7 +309,7 @@ export default class Minecraft {
           // Focus game and dismiss loading screen
           this.displayScreen(null);
           this.loadingScreen = null;
-        }
+        },
       );
     }
   }
@@ -387,8 +399,8 @@ export default class Minecraft {
       return;
     }
 
-    if (typeof screen === 'undefined') {
-      console.error('Tried to display an undefined screen');
+    if (typeof screen === "undefined") {
+      console.error("Tried to display an undefined screen");
       return;
     }
 
@@ -435,11 +447,22 @@ export default class Minecraft {
       this.particleRenderer.onTick();
 
       // Progressive Background Spawning (Option C: Arriving Crowd Effect)
-      if (this.spectatorsToSpawnQueue && this.spectatorsToSpawnQueue.length > 0) {
+      if (
+        this.spectatorsToSpawnQueue &&
+        this.spectatorsToSpawnQueue.length > 0
+      ) {
         let spawnBatchSize = 2; // spawn 2 spectators per tick (40 spectators per second)
-        for (let i = 0; i < spawnBatchSize && this.spectatorsToSpawnQueue.length > 0; i++) {
+        for (
+          let i = 0;
+          i < spawnBatchSize && this.spectatorsToSpawnQueue.length > 0;
+          i++
+        ) {
           let spec = this.spectatorsToSpawnQueue.shift();
-          let spectator = new PlayerEntity(this, this.world, 400 + this.spectatorsSpawnedCount);
+          let spectator = new PlayerEntity(
+            this,
+            this.world,
+            400 + this.spectatorsSpawnedCount,
+          );
           spectator.username = spec.mobName;
           spectator.isSpectator = true;
 
@@ -500,7 +523,7 @@ export default class Minecraft {
   onKeyPressed(button) {
     // Select slot
     for (let i = 1; i <= 9; i++) {
-      if (button === 'Digit' + i) {
+      if (button === "Digit" + i) {
         this.player.inventory.selectedSlotIndex = i - 1;
       }
     }
@@ -518,7 +541,7 @@ export default class Minecraft {
     }
 
     // Toggle debug overlay
-    if (button === 'F3') {
+    if (button === "F3") {
       this.settings.debugOverlay = !this.settings.debugOverlay;
       this.settings.save();
     }
@@ -698,13 +721,13 @@ export default class Minecraft {
 
   getThreeTexture(id) {
     if (!(id in this.resources)) {
-      console.error('Texture not found: ' + id);
+      console.error("Texture not found: " + id);
       return;
     }
 
     let image = this.resources[id];
-    let canvas = document.createElement('canvas');
-    let context = canvas.getContext('2d');
+    let canvas = document.createElement("canvas");
+    let context = canvas.getContext("2d");
     canvas.width = image.width;
     canvas.height = image.height;
     context.imageSmoothingEnabled = false;
