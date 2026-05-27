@@ -103,19 +103,44 @@ export default class PlayerRenderer extends EntityRenderer {
             mesh.material.depthTest = false;
         } else {
             if (entity.isSpectator) {
-                let mobName = entity.username;
+                let mobName = entity.username; // now plain: "cow", "pig", "creeper", etc.
                 if (!(mobName in this.spectatorTextures)) {
-                    let skinUrl = "https://minotar.net/skin/" + mobName;
-                    this.spectatorTextures[mobName] = this.loadTextureFromUrl(skinUrl, this.textureCharacter);
+                    // Local vanilla mob texture paths (extracted from Minecraft 1.8 JAR)
+                    const MOB_TEXTURE_PATHS = {
+                        "cow":       "mob/cow/cow.png",
+                        "pig":       "mob/pig/pig.png",
+                        "sheep":     "mob/sheep/sheep.png",
+                        "chicken":   "mob/chicken.png",
+                        "wolf":      "mob/wolf/wolf.png",
+                        "ocelot":    "mob/ocelot.png",
+                        "creeper":   "mob/creeper/creeper.png",
+                        "skeleton":  "mob/skeleton/skeleton.png",
+                        "zombie":    "mob/zombie/zombie.png",
+                        "enderman":  "mob/enderman/enderman.png",
+                        "villager":  "mob/villager/villager.png",
+                        "slime":     "mob/slime/slime.png",
+                        "magmacube": "mob/magmacube.png",
+                        "squid":     "mob/squid.png",
+                    };
+                    let texPath = MOB_TEXTURE_PATHS[mobName];
+                    let tex = texPath ? this.worldRenderer.minecraft.getThreeTexture(texPath) : null;
+                    if (tex) {
+                        tex.magFilter = THREE.NearestFilter;
+                        tex.minFilter = THREE.NearestFilter;
+                        this.spectatorTextures[mobName] = tex;
+                    } else {
+                        this.spectatorTextures[mobName] = this.textureCharacter; // fallback
+                    }
                 }
                 this.tessellator.bindTexture(this.spectatorTextures[mobName]);
 
-                // Swap to proper custom mob model if it is an animal/mob type
-                let mobType = mobName.replace("MHF_", "").toLowerCase();
-                const customMobs = ["cow", "pig", "sheep", "chicken", "wolf", "ocelot", "villager", "creeper", "enderman", "squid", "slime", "lavaslime"];
-                if (customMobs.includes(mobType)) {
-                    if (!(this.model instanceof ModelMob) || this.model.mobType !== mobType) {
-                        this.model = new ModelMob(mobType);
+                // Swap to proper custom mob model
+                const customMobs = ["cow", "pig", "sheep", "chicken", "wolf", "ocelot",
+                    "villager", "creeper", "enderman", "squid", "slime", "magmacube",
+                    "skeleton", "zombie"];
+                if (customMobs.includes(mobName)) {
+                    if (!(this.model instanceof ModelMob) || this.model.mobType !== mobName) {
+                        this.model = new ModelMob(mobName);
                     }
                 } else {
                     if (!(this.model instanceof ModelPlayer)) {

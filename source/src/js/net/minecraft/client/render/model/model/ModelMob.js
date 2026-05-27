@@ -362,6 +362,68 @@ export default class ModelMob extends ModelBase {
                     .setRotationPoint(2.0, -6.0, 0.0)
                     .addBox(-1.0, 0.0, -1.0, 2, 30, 2);
                 break;
+
+            case "skeleton":
+                // Head: 8x8x8 at (0, 0)
+                this.parts["head"] = new ModelRenderer("head", W, H)
+                    .setTextureOffset(0, 0)
+                    .setRotationPoint(0.0, 6.0, 0.0)
+                    .addBox(-4.0, -8.0, -4.0, 8, 8, 8);
+                // Body: 8x12x4 at (16, 16) — skeleton texture
+                this.parts["body"] = new ModelRenderer("body", W, H)
+                    .setTextureOffset(16, 16)
+                    .setRotationPoint(0.0, 6.0, 0.0)
+                    .addBox(-4.0, 0.0, -2.0, 8, 12, 4);
+                // Arms: 2x12x2 (thin skeleton arms) at (40, 16)
+                this.parts["rightArm"] = new ModelRenderer("rightArm", W, H)
+                    .setTextureOffset(40, 16)
+                    .setRotationPoint(-5.0, 7.0, 0.0)
+                    .addBox(-1.0, -1.0, -1.0, 2, 12, 2);
+                this.parts["leftArm"] = new ModelRenderer("leftArm", W, H)
+                    .setTextureOffset(40, 16)
+                    .setRotationPoint(5.0, 7.0, 0.0)
+                    .addBox(-1.0, -1.0, -1.0, 2, 12, 2);
+                // Legs: 2x12x2 (thin) at (0, 16)
+                this.parts["leg1"] = new ModelRenderer("leg1", W, H)
+                    .setTextureOffset(0, 16)
+                    .setRotationPoint(-2.0, 12.0, 0.0)
+                    .addBox(-1.0, 0.0, -1.0, 2, 12, 2);
+                this.parts["leg2"] = new ModelRenderer("leg2", W, H)
+                    .setTextureOffset(0, 16)
+                    .setRotationPoint(2.0, 12.0, 0.0)
+                    .addBox(-1.0, 0.0, -1.0, 2, 12, 2);
+                break;
+
+            case "zombie":
+                // Head: 8x8x8 at (0, 0)
+                this.parts["head"] = new ModelRenderer("head", W, H)
+                    .setTextureOffset(0, 0)
+                    .setRotationPoint(0.0, 6.0, 0.0)
+                    .addBox(-4.0, -8.0, -4.0, 8, 8, 8);
+                // Body: 8x12x4 at (16, 16)
+                this.parts["body"] = new ModelRenderer("body", W, H)
+                    .setTextureOffset(16, 16)
+                    .setRotationPoint(0.0, 6.0, 0.0)
+                    .addBox(-4.0, 0.0, -2.0, 8, 12, 4);
+                // Arms: 4x12x4 at (40, 16) — zombie outstretched slightly rotated
+                this.parts["rightArm"] = new ModelRenderer("rightArm", W, H)
+                    .setTextureOffset(40, 16)
+                    .setRotationPoint(-5.0, 7.0, 0.0)
+                    .addBox(-3.0, -2.0, -2.0, 4, 12, 4);
+                this.parts["leftArm"] = new ModelRenderer("leftArm", W, H)
+                    .setTextureOffset(40, 16)
+                    .setRotationPoint(5.0, 7.0, 0.0)
+                    .addBox(-1.0, -2.0, -2.0, 4, 12, 4);
+                // Legs: 4x12x4 at (0, 16)
+                this.parts["leg1"] = new ModelRenderer("leg1", W, H)
+                    .setTextureOffset(0, 16)
+                    .setRotationPoint(-2.0, 12.0, 0.0)
+                    .addBox(-2.0, 0.0, -2.0, 4, 12, 4);
+                this.parts["leg2"] = new ModelRenderer("leg2", W, H)
+                    .setTextureOffset(0, 16)
+                    .setRotationPoint(2.0, 12.0, 0.0)
+                    .addBox(-2.0, 0.0, -2.0, 4, 12, 4);
+                break;
         }
     }
 

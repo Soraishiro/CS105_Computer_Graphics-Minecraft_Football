@@ -154,6 +154,21 @@ class Start {
       'entity/football.png',
       'entity/football_2.png',
       'entity/football_bump.png',
+      // Vanilla mob textures for stadium spectators
+      'mob/cow/cow.png',
+      'mob/pig/pig.png',
+      'mob/sheep/sheep.png',
+      'mob/chicken.png',
+      'mob/wolf/wolf.png',
+      'mob/ocelot.png',
+      'mob/creeper/creeper.png',
+      'mob/skeleton/skeleton.png',
+      'mob/zombie/zombie.png',
+      'mob/enderman/enderman.png',
+      'mob/villager/villager.png',
+      'mob/slime/slime.png',
+      'mob/magmacube.png',
+      'mob/squid.png',
     ]).then((resources) => {
       return this.buildStadiumAtlas(resources);
     }).then((resources) => {

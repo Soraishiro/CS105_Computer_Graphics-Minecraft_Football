@@ -179,111 +179,70 @@ export default class Minecraft {
       this.world.addEntity(this.player);
 
       // --- Setup Stadium Spectators Pre-calculation ---
+      // Plain mob type names matching local vanilla textures in src/resources/mob/
       const MOB_NAMES = [
-        "MHF_Cow",
-        "MHF_Pig",
-        "MHF_Sheep",
-        "MHF_Chicken",
-        "MHF_Wolf",
-        "MHF_Ocelot",
-        "MHF_Villager",
-        "MHF_Creeper",
-        "MHF_Enderman",
-        "MHF_Zombie",
-        "MHF_Skeleton",
-        "MHF_Squid",
-        "MHF_Slime",
-        "MHF_LavaSlime"
+        "cow", "pig", "sheep", "chicken", "wolf", "ocelot",
+        "villager", "creeper", "enderman", "zombie", "skeleton",
+        "squid", "slime", "magmacube"
       ];
 
-      let seatPositions = [];
-      let sl = 64;
-      let halfLength = 30;
-      let halfWidth = 21;
+      // Stadium geometry constants
+      let sl = 64;          // base Y of stadium surface
+      let halfLength = 30;  // half-length along X (goal sides)
+      let halfWidth = 21;   // half-width along Z (side stands)
       let STAND_MARGIN = 9;
       let STAND_TIERS = 6;
       let STAND_SLOPE = 2;
 
-      // Mathematically locate all seat blocks
+      // Scan ONLY the north stand (wz > 0, opposite the tunnel which is at wz < 0)
+      // North stand: dZ is the dominant direction, not a goal side.
+      let seatPositions = [];
       for (let wx = -50; wx <= 50; wx++) {
-        for (let wz = -41; wz <= 41; wz++) {
+        for (let wz = halfWidth + STAND_MARGIN; wz <= 41; wz++) {
           let dX = Math.abs(wx) - halfLength;
-          let dZ = Math.abs(wz) - halfWidth;
-          let dist = Math.max(dX, dZ);
+          let dZ = wz - halfWidth; // always positive (north side only)
 
-          if (dist >= STAND_MARGIN) {
-            let standDist = dist - STAND_MARGIN;
-            let tier = Math.floor(standDist / STAND_SLOPE);
-            if (tier < STAND_TIERS - 1) { // Exclude top border row (white concrete)
-              let height = tier + 1;
+          // This must be the side stand (dZ dominant), not goal-side corner
+          if (dX >= dZ - 1) continue; // skip corner/goal-side overlap
 
-              // Exclude corner gaps
-              if (Math.abs(dX - dZ) <= 1) continue;
+          let dist = dZ;
+          let standDist = dist - STAND_MARGIN;
+          if (standDist < 0) continue;
 
-              let isGoalSide = dX > dZ;
+          let tier = Math.floor(standDist / STAND_SLOPE);
+          if (tier >= STAND_TIERS - 1) continue; // exclude top border row
 
-              // Exclude tunnel gate area
-              if (!isGoalSide && wz < 0 && Math.abs(wx) <= 5 && wz >= -35) continue;
+          let height = tier + 1;
 
-              // Exclude decorative side concrete walls
-              let edgeDist = Math.abs(dX - dZ);
-              if (edgeDist === 2) continue;
+          // Exclude walkway aisles along X
+          let span = halfLength * 2;
+          let step = Math.floor(span / 4);
+          let relX = wx + halfLength;
+          let isAisle = (relX > 0) && (relX < span) && (relX % step === 0);
+          if (isAisle) continue;
 
-              // Exclude walkways/aisles
-              let isAisle = false;
-              if (isGoalSide) {
-                let span = halfWidth * 2;
-                let step = Math.floor(span / 4);
-                let relZ = (wz + halfWidth);
-                isAisle = (relZ > 0) && (relZ < span) && (relZ % step === 0);
-              } else {
-                let span = halfLength * 2;
-                let step = Math.floor(span / 4);
-                let relX = (wx + halfLength);
-                isAisle = (relX > 0) && (relX < span) && (relX % step === 0);
-              }
-
-              if (!isAisle) {
-                seatPositions.push({ x: wx, y: sl + height, z: wz });
-              }
-            }
-          }
+          // Y+1: place entity on TOP of the seat block surface
+          seatPositions.push({ x: wx, y: sl + height + 1, z: wz });
         }
       }
 
-      // Shuffle and select seats randomly (Cap at 400 for WebGL 60FPS safety limit)
-      const MAX_SPECTATORS = 400;
-      let shuffledSeats = seatPositions.sort(() => 0.5 - Math.random());
-      let fillCount = Math.floor(shuffledSeats.length * 0.8);
-      let selectedSeats = shuffledSeats.slice(0, Math.min(fillCount, MAX_SPECTATORS));
+      // All mobs face south (toward pitch) — yaw 180 for north stand
+      const SPECTATOR_YAW = 180;
 
-      // Build queue of spectators to spawn
+      // Build spawn queue — fill all valid north-stand seats (cap 400 for WebGL perf)
+      const MAX_SPECTATORS = 400;
+      let selectedSeats = seatPositions.slice(0, MAX_SPECTATORS);
+
       let spectatorsToSpawn = [];
       for (let i = 0; i < selectedSeats.length; i++) {
         let seat = selectedSeats[i];
-        let mobName = MOB_NAMES[Math.floor(Math.random() * MOB_NAMES.length)];
-        
-        // Calculate whether the seat is on a Goal Side (East/West) or Side (North/South) stand
-        let dX = Math.abs(seat.x) - halfLength;
-        let dZ = Math.abs(seat.z) - halfWidth;
-        let isGoalSide = dX > dZ;
-        
-        // Force spectators to face perfectly perpendicular to their respective stand
-        let yawAngle = 0;
-        if (isGoalSide) {
-          // East/West stands face West/East
-          yawAngle = (seat.x < 0) ? 90 : -90;
-        } else {
-          // North/South stands face South/North
-          yawAngle = (seat.z < 0) ? 0 : 180;
-        }
-
+        let mobName = MOB_NAMES[i % MOB_NAMES.length]; // cycle through all types evenly
         spectatorsToSpawn.push({
           x: seat.x,
           y: seat.y,
           z: seat.z,
           mobName: mobName,
-          yawAngle: yawAngle
+          yawAngle: SPECTATOR_YAW
         });
       }
 
