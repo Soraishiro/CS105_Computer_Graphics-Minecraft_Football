@@ -70,6 +70,41 @@ export default class GuiLightingOptions extends GuiScreen {
                 settings.ambientIntensity = value / 10;
                 updateLighting();
             }).setDisplayNameBuilder((name, value) => name + ": " + (value / 10).toFixed(1)));
+            
+            // Restored Rain Weather
+            this.buttonList.push(new GuiSwitchButton("Rain Weather", settings.enableRain, centerX, optionStartY + spacing * 2, 200, 20, value => {
+                settings.enableRain = value;
+                if (this.minecraft.world) {
+                    this.minecraft.world.isRaining = value;
+                    if (!value) {
+                        this.minecraft.world.rainStrength = 0.0;
+                    }
+                }
+                updateLighting();
+            }));
+
+            // Restored Time Slider
+            let initialTime = 0;
+            if (this.minecraft.world) {
+                initialTime = this.minecraft.world.time % 24000;
+            }
+            this.buttonList.push(new GuiSliderButton("Time", initialTime, 0, 24000, centerX, optionStartY + spacing * 3, 200, 20, value => {
+                if (this.minecraft.world) {
+                    let world = this.minecraft.world;
+                    world.setTime(value);
+
+                    let lightLevel = world.calculateSkylightSubtracted(1.0);
+                    if (lightLevel !== world.skylightSubtracted) {
+                        world.skylightSubtracted = lightLevel;
+                        this.minecraft.worldRenderer.rebuildAll();
+                    }
+                    updateLighting();
+                }
+            }).setDisplayNameBuilder((name, value) => {
+                let hour = Math.floor((value / 1000 + 6) % 24);
+                let minutes = Math.floor((value % 1000) * 60 / 1000);
+                return name + ": " + hour.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0');
+            }));
 
         } else if (this.currentTab === "SUN_MOON") {
             // Sun (Left)

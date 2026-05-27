@@ -178,44 +178,168 @@ export default class Minecraft {
       this.player.username = this.session.getProfile().getUsername();
       this.world.addEntity(this.player);
 
-      this.world.loadSpawnChunks();
-      this.player.respawn();
+      // --- Setup Stadium Spectators Pre-calculation ---
+      const MOB_NAMES = [
+        "MHF_Cow",
+        "MHF_Pig",
+        "MHF_Sheep",
+        "MHF_Chicken",
+        "MHF_Wolf",
+        "MHF_Ocelot",
+        "MHF_Villager",
+        "MHF_Creeper",
+        "MHF_Enderman",
+        "MHF_Zombie",
+        "MHF_Skeleton",
+        "MHF_Squid",
+        "MHF_Slime",
+        "MHF_LavaSlime"
+      ];
 
-      // Face toward the pitch (+Z direction) from inside the tunnel.
-      // rotationYaw=180 maps to look-vector z = cos(-180°*π/180 - π) = cos(0) = +1.
-      this.player.rotationYaw = 180;
-      this.player.prevRotationYaw = 180;
+      let seatPositions = [];
+      let sl = 64;
+      let halfLength = 30;
+      let halfWidth = 21;
+      let STAND_MARGIN = 9;
+      let STAND_TIERS = 6;
+      let STAND_SLOPE = 2;
 
-      // Spawn football
-      let ball = new BallEntity(this, this.world, 100); // ID 100 for ball
-      ball.setPosition(0, 70, 0);
-      this.world.addEntity(ball);
+      // Mathematically locate all seat blocks
+      for (let wx = -50; wx <= 50; wx++) {
+        for (let wz = -41; wz <= 41; wz++) {
+          let dX = Math.abs(wx) - halfLength;
+          let dZ = Math.abs(wz) - halfWidth;
+          let dist = Math.max(dX, dZ);
 
-      // Spawn substitutions — first 3 = Barcelona (left), next 3 = Real Madrid (right)
-      for (let i = 0; i < 6; i++) {
-        let sub = new PlayerEntity(this, this.world, 200 + i);
-        sub.username = "Sub " + (i + 1);
-        let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
-        let z = -20; // Standing near the tunnel
-        sub.setPosition(x, this.world.getHeightAt(x, z), z);
-        sub.rotationYaw = 0; // facing the pitch (+Z)
-        if (i < 3) {
-          sub.isBarcelona = true;
-        } else {
-          sub.isRealMadrid = true;
+          if (dist >= STAND_MARGIN) {
+            let standDist = dist - STAND_MARGIN;
+            let tier = Math.floor(standDist / STAND_SLOPE);
+            if (tier < STAND_TIERS - 1) { // Exclude top border row (white concrete)
+              let height = tier + 1;
+
+              // Exclude corner gaps
+              if (Math.abs(dX - dZ) <= 1) continue;
+
+              let isGoalSide = dX > dZ;
+
+              // Exclude tunnel gate area
+              if (!isGoalSide && wz < 0 && Math.abs(wx) <= 5 && wz >= -35) continue;
+
+              // Exclude decorative side concrete walls
+              let edgeDist = Math.abs(dX - dZ);
+              if (edgeDist === 2) continue;
+
+              // Exclude walkways/aisles
+              let isAisle = false;
+              if (isGoalSide) {
+                let span = halfWidth * 2;
+                let step = Math.floor(span / 4);
+                let relZ = (wz + halfWidth);
+                isAisle = (relZ > 0) && (relZ < span) && (relZ % step === 0);
+              } else {
+                let span = halfLength * 2;
+                let step = Math.floor(span / 4);
+                let relX = (wx + halfLength);
+                isAisle = (relX > 0) && (relX < span) && (relX % step === 0);
+              }
+
+              if (!isAisle) {
+                seatPositions.push({ x: wx, y: sl + height, z: wz });
+              }
+            }
+          }
         }
-        this.world.addEntity(sub);
       }
 
-      // Spawn referee in the middle of the pitch
-      let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
-      referee.username = "Referee";
-      referee.isReferee = true;
-      let refY = this.world.getHeightAt(0, 0);
-      referee.setPosition(0, refY, 0);
-      referee.rotationYaw = 90; // face sideways
-      referee.prevRotationYaw = 90;
-      this.world.addEntity(referee);
+      // Shuffle and select seats randomly (Cap at 400 for WebGL 60FPS safety limit)
+      const MAX_SPECTATORS = 400;
+      let shuffledSeats = seatPositions.sort(() => 0.5 - Math.random());
+      let fillCount = Math.floor(shuffledSeats.length * 0.8);
+      let selectedSeats = shuffledSeats.slice(0, Math.min(fillCount, MAX_SPECTATORS));
+
+      // Build queue of spectators to spawn
+      let spectatorsToSpawn = [];
+      for (let i = 0; i < selectedSeats.length; i++) {
+        let seat = selectedSeats[i];
+        let mobName = MOB_NAMES[Math.floor(Math.random() * MOB_NAMES.length)];
+        
+        // Calculate whether the seat is on a Goal Side (East/West) or Side (North/South) stand
+        let dX = Math.abs(seat.x) - halfLength;
+        let dZ = Math.abs(seat.z) - halfWidth;
+        let isGoalSide = dX > dZ;
+        
+        // Force spectators to face perfectly perpendicular to their respective stand
+        let yawAngle = 0;
+        if (isGoalSide) {
+          // East/West stands face West/East
+          yawAngle = (seat.x < 0) ? 90 : -90;
+        } else {
+          // North/South stands face South/North
+          yawAngle = (seat.z < 0) ? 0 : 180;
+        }
+
+        spectatorsToSpawn.push({
+          x: seat.x,
+          y: seat.y,
+          z: seat.z,
+          mobName: mobName,
+          yawAngle: yawAngle
+        });
+      }
+
+      this.spectatorsToSpawnQueue = spectatorsToSpawn;
+      this.spectatorsSpawnedCount = 0;
+
+      this.world.loadSpawnChunksAsync(
+        (progress) => {
+          if (this.loadingScreen !== null) {
+            this.loadingScreen.setProgress(progress);
+          }
+        },
+        () => {
+          this.player.respawn();
+
+          // Face toward the pitch (+Z direction) from inside the tunnel.
+          // rotationYaw=180 maps to look-vector z = cos(-180°*π/180 - π) = cos(0) = +1.
+          this.player.rotationYaw = 180;
+          this.player.prevRotationYaw = 180;
+
+          // Spawn football
+          let ball = new BallEntity(this, this.world, 100); // ID 100 for ball
+          ball.setPosition(0, 70, 0);
+          this.world.addEntity(ball);
+
+          // Spawn substitutions — first 3 = Barcelona (left), next 3 = Real Madrid (right)
+          for (let i = 0; i < 6; i++) {
+            let sub = new PlayerEntity(this, this.world, 200 + i);
+            sub.username = "Sub " + (i + 1);
+            let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
+            let z = -20; // Standing near the tunnel
+            sub.setPosition(x, this.world.getHeightAt(x, z), z);
+            sub.rotationYaw = 0; // facing the pitch (+Z)
+            if (i < 3) {
+              sub.isBarcelona = true;
+            } else {
+              sub.isRealMadrid = true;
+            }
+            this.world.addEntity(sub);
+          }
+
+          // Spawn referee in the middle of the pitch
+          let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
+          referee.username = "Referee";
+          referee.isReferee = true;
+          let refY = this.world.getHeightAt(0, 0);
+          referee.setPosition(0, refY, 0);
+          referee.rotationYaw = 90; // face sideways
+          referee.prevRotationYaw = 90;
+          this.world.addEntity(referee);
+
+          // Focus game and dismiss loading screen
+          this.displayScreen(null);
+          this.loadingScreen = null;
+        }
+      );
     }
   }
 
@@ -350,6 +474,29 @@ export default class Minecraft {
 
       // Tick particle renderer
       this.particleRenderer.onTick();
+
+      // Progressive Background Spawning (Option C: Arriving Crowd Effect)
+      if (this.spectatorsToSpawnQueue && this.spectatorsToSpawnQueue.length > 0) {
+        let spawnBatchSize = 2; // spawn 2 spectators per tick (40 spectators per second)
+        for (let i = 0; i < spawnBatchSize && this.spectatorsToSpawnQueue.length > 0; i++) {
+          let spec = this.spectatorsToSpawnQueue.shift();
+          let spectator = new PlayerEntity(this, this.world, 400 + this.spectatorsSpawnedCount);
+          spectator.username = spec.mobName;
+          spectator.isSpectator = true;
+
+          // Place precisely on top of the concrete seat block
+          spectator.setPosition(spec.x, spec.y, spec.z);
+
+          // Orient the spectator to face the pitch orthogonally
+          spectator.rotationYaw = spec.yawAngle;
+          spectator.prevRotationYaw = spec.yawAngle;
+          spectator.rotationYawHead = spec.yawAngle;
+          spectator.prevRotationYawHead = spec.yawAngle;
+
+          this.world.addEntity(spectator);
+          this.spectatorsSpawnedCount++;
+        }
+      }
     }
 
     // Tick the screen

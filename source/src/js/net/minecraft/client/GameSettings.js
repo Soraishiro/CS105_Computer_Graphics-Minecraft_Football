@@ -18,6 +18,7 @@ export default class GameSettings {
         this.viewDistance = 8;
         this.debugOverlay = false;
         this.serverAddress = 'server.labystudio.de';
+        this.soundtrack = true;
 
         // Lighting settings
         this.enableDayNightLighting = true;

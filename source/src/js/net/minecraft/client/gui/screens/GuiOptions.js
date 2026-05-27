@@ -18,7 +18,7 @@ export default class GuiOptions extends GuiScreen {
 
         let settings = this.minecraft.settings;
 
-        let y = this.height / 2 - 50;
+        let y = this.height / 2 - 90;
         this.buttonList.push(new GuiSwitchButton("Ambient Occlusion", settings.ambientOcclusion, this.width / 2 - 100, y, 200, 20, value => {
             settings.ambientOcclusion = value;
             this.minecraft.worldRenderer.rebuildAll();
@@ -32,15 +32,19 @@ export default class GuiOptions extends GuiScreen {
         this.buttonList.push(new GuiSliderButton("Render Distance", settings.viewDistance, 2, 16, this.width / 2 - 100, y + 24 * 3, 200, 20, value => {
             settings.viewDistance = value;
         }));
-        this.buttonList.push(new GuiButton("Controls...", this.width / 2 - 100, y + 24 * 4, 200, 20, () => {
+        this.buttonList.push(new GuiSwitchButton("Soundtrack Music", settings.soundtrack, this.width / 2 - 100, y + 24 * 4, 200, 20, value => {
+            settings.soundtrack = value;
+            this.minecraft.soundManager.toggleSoundtrack(value);
+        }));
+        this.buttonList.push(new GuiButton("Controls...", this.width / 2 - 100, y + 24 * 5, 200, 20, () => {
             this.minecraft.displayScreen(new GuiControls(this));
         }));
 
-        this.buttonList.push(new GuiButton("Lighting Settings...", this.width / 2 - 100, y + 24 * 5, 200, 20, () => {
+        this.buttonList.push(new GuiButton("Lighting Settings...", this.width / 2 - 100, y + 24 * 6, 200, 20, () => {
             this.minecraft.displayScreen(new GuiLightingOptions(this));
         }));
 
-        this.buttonList.push(new GuiButton("Done", this.width / 2 - 100, y + 154, 200, 20, () => {
+        this.buttonList.push(new GuiButton("Done", this.width / 2 - 100, y + 178, 200, 20, () => {
             this.minecraft.displayScreen(this.previousScreen);
         }));
     }

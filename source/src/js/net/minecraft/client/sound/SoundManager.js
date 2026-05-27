@@ -14,6 +14,7 @@ export default class SoundManager {
 
     create(worldRenderer) {
         this.scene = worldRenderer.scene;
+        this.minecraft = worldRenderer.minecraft;
 
         this.audioListener = new THREE.AudioListener();
         worldRenderer.camera.add(this.audioListener);
@@ -159,6 +160,12 @@ export default class SoundManager {
 
     playNextTrack() {
         if (this._trackChanging) return;
+        if (this.minecraft && !this.minecraft.settings.soundtrack) {
+            if (this.soundtrackAudio && this.soundtrackAudio.isPlaying) {
+                this.soundtrackAudio.stop();
+            }
+            return;
+        }
         this._trackChanging = true;
 
         if (this.currentTrackIndex >= this.playlist.length) {
@@ -216,6 +223,19 @@ export default class SoundManager {
         } else {
             if (this.rainAudio.isPlaying) {
                 this.rainAudio.pause();
+            }
+        }
+    }
+
+    toggleSoundtrack(enabled) {
+        if (!this.isCreated()) return;
+        if (!enabled) {
+            if (this.soundtrackAudio && this.soundtrackAudio.isPlaying) {
+                this.soundtrackAudio.stop();
+            }
+        } else {
+            if (this.soundtrackAudio && !this.soundtrackAudio.isPlaying && !this._trackChanging) {
+                this.playNextTrack();
             }
         }
     }

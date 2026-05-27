@@ -31,8 +31,9 @@ export default class MathHelper {
             angle--;
         }
 
+        let f = angle;
         angle = 1.0 - ((Math.cos(angle * Math.PI) + 1.0) / 2.0);
-        angle = angle + (angle - angle) / 3.0;
+        angle = f + (angle - f) / 3.0;
 
         return angle;
     }

@@ -144,6 +144,15 @@ export default class WorldRenderer {
 
     // Bo quan ly Event-driven PointLight
     this.dynamicLights = new Map();
+    this.lightPool = [];
+    for (let i = 0; i < 50; i++) {
+        let light = new THREE.PointLight(0xffffff, 0, 15);
+        light.shadow.mapSize.width = 512;
+        light.shadow.mapSize.height = 512;
+        light.shadow.bias = -0.0001;
+        this.scene.add(light);
+        this.lightPool.push(light);
+    }
 
     // Create web renderer
     this.webRenderer = new THREE.WebGLRenderer({
@@ -1101,28 +1110,39 @@ export default class WorldRenderer {
     let key = `${x},${y},${z}`;
     if (this.dynamicLights.has(key)) return;
 
-    // Su dung thong so tu GUI neu co, neu khong thi dung thong so mac dinh
     let finalIntensity = this.minecraft.settings
       ? this.minecraft.settings.torchIntensity
       : intensity;
     let finalDistance = this.minecraft.settings
       ? this.minecraft.settings.torchDistance
       : distance;
-
-    let pointLight = new THREE.PointLight(color, finalIntensity, finalDistance);
-    pointLight.position.set(x + 0.5, y + 0.5, z + 0.5);
-
-    // Turn on shadow map
-    pointLight.castShadow = this.minecraft.settings
+    let castShadow = this.minecraft.settings
       ? this.minecraft.settings.torchCastShadow
       : false;
-    pointLight.shadow.mapSize.width = 512; // Giữ ở mức trung bình để đỡ lag
-    pointLight.shadow.mapSize.height = 512;
-    // pointLight.shadow.camera.near = 0.1;
-    pointLight.shadow.camera.far = finalDistance;
-    pointLight.shadow.bias = -0.0001; // Tránh hiện tượng shadow acne
 
-    this.scene.add(pointLight);
+    // Sử dụng Object Pool để tránh recompilation lag
+    let pointLight = this.lightPool.find(l => l.intensity === 0);
+    if (!pointLight) {
+        pointLight = new THREE.PointLight(color, 0, finalDistance);
+        pointLight.shadow.mapSize.width = 512;
+        pointLight.shadow.mapSize.height = 512;
+        pointLight.shadow.bias = -0.0001;
+        this.scene.add(pointLight);
+        this.lightPool.push(pointLight);
+    }
+
+    pointLight.color.setHex(color);
+    pointLight.distance = finalDistance;
+    pointLight.position.set(x + 0.5, y + 0.5, z + 0.5);
+    pointLight.intensity = finalIntensity;
+    
+    if (pointLight.castShadow !== castShadow) {
+        pointLight.castShadow = castShadow;
+    }
+    if (pointLight.shadow.camera.far !== finalDistance) {
+        pointLight.shadow.camera.far = finalDistance;
+    }
+
     this.dynamicLights.set(key, pointLight);
   }
 
@@ -1130,7 +1150,7 @@ export default class WorldRenderer {
     let key = `${x},${y},${z}`;
     if (this.dynamicLights.has(key)) {
       let light = this.dynamicLights.get(key);
-      this.scene.remove(light);
+      light.intensity = 0; // Trả về pool bằng cách tắt đèn
       this.dynamicLights.delete(key);
     }
   }
@@ -1276,7 +1296,16 @@ export default class WorldRenderer {
         });
         this.weatherGroup.clear();
       }
+      this.minecraft.window.canvasWorld.style.filter = 'none';
       return;
+    }
+
+    // Hiệu ứng sấm chớp (Lightning flash bằng CSS filter siêu nhẹ)
+    if (world.lightningFlash > 0) {
+      let flashStrength = world.lightningFlash / 2.0; // 0.0 -> 1.0
+      this.minecraft.window.canvasWorld.style.filter = `brightness(${100 + flashStrength * 100}%) contrast(${100 + flashStrength * 50}%)`;
+    } else {
+      this.minecraft.window.canvasWorld.style.filter = 'none';
     }
 
     let player = this.minecraft.player;
@@ -1301,7 +1330,7 @@ export default class WorldRenderer {
 
     this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
 
-    let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.15;
+    let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.35; // Tăng tốc độ rơi của mưa
 
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
@@ -1322,6 +1351,12 @@ export default class WorldRenderer {
         let scrollOffset = timeFactor + (seed % 100) * 0.01;
 
         let height = renderMaxY - renderMinY;
+        
+        // Wind effect (Pro Max style)
+        // Simulate wind blowing diagonally (Tăng mạnh gió để thấy rõ)
+        let windX = height * 0.40;
+        let windZ = height * 0.15;
+
         let uvVStart = 0 + scrollOffset;
         let uvVEnd = height * 0.25 + scrollOffset;
 
@@ -1341,16 +1376,16 @@ export default class WorldRenderer {
           uvVEnd,
         );
         this.tessellator.addVertexWithUV(
-          x + 0.5,
+          x + 0.5 + windX,
           renderMaxY,
-          z + 0.5,
+          z + 0.5 + windZ,
           1.0,
           uvVStart,
         );
         this.tessellator.addVertexWithUV(
-          x - 0.5,
+          x - 0.5 + windX,
           renderMaxY,
-          z - 0.5,
+          z - 0.5 + windZ,
           0.0,
           uvVStart,
         );
@@ -1371,16 +1406,16 @@ export default class WorldRenderer {
           uvVEnd,
         );
         this.tessellator.addVertexWithUV(
-          x + 0.5,
+          x + 0.5 + windX,
           renderMaxY,
-          z - 0.5,
+          z - 0.5 + windZ,
           1.0,
           uvVStart,
         );
         this.tessellator.addVertexWithUV(
-          x - 0.5,
+          x - 0.5 + windX,
           renderMaxY,
-          z + 0.5,
+          z + 0.5 + windZ,
           0.0,
           uvVStart,
         );

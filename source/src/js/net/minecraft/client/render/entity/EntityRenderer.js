@@ -27,6 +27,14 @@ export default class EntityRenderer {
         // Bat castShadow cho tat ca cac bo phan cua entity (tay, chan, than, dau...)
         this.group.traverse(child => {
             if (child.isMesh) {
+                if (entity.isSpectator) {
+                    // Fast WebGL path for spectators: keep lightweight MeshBasicMaterial
+                    // and disable soft dynamic shadow casting to restore buttery-smooth 60+ FPS!
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                    return;
+                }
+
                 child.castShadow = true;
                 child.receiveShadow = true; // Cho phep nhan bong cua chinh no
 
