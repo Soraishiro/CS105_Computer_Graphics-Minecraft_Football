@@ -420,23 +420,20 @@ export default class StadiumGenerator {
   // ---------------------------------------------------------------
 
   /**
-   * Stadium player tunnel.
+   * Classic-Minecraft stadium tunnel — minimal, cohesive palette.
    *
-   * Architecture brief — references real Camp Nou / Allianz / Wembley tunnels:
+   * Per user feedback, the previous multi-material LED/neon design was
+   * "phèn" (tacky). This redesign uses only vanilla-era Minecraft blocks
+   * (cobblestone, wood planks, torches, glass) to fit the classic aesthetic:
    *
-   *   • Walls in dedicated TUNNEL_WALL_BLOCK texture (panelled concrete with
-   *     painted inset, not the flat pitch-line block we had before).
-   *   • Chest-height LED ribbon (TUNNEL_NEON_STRIP) — illuminated band that
-   *     wraps the entire corridor.
-   *   • Roof line trimmed with METAL_RAILING and broken by STEEL_TRUSS bays
-   *     every 4 blocks so the ceiling reads as supported, not as a slab.
-   *   • Ceiling itself in ROOF_PANEL_BLOCK with REDSTONE_LAMP_ON recessed
-   *     every 3 blocks down the centreline.
-   *   • Floor: dark concrete centre carpet flanked by glowing neon strips
-   *     where the wall meets the floor.
-   *   • Outer portal: STEEL_TRUSS columns rise 8 blocks high and frame a
-   *     scoreboard panel; the very last 2 z-rows are open sky.
-   *   • Inner mouth: LED banner reading toward the pitch above the doorway.
+   *   • Floor:    PITCH_LINE   (clean white concrete underfoot).
+   *   • Walls:    COBBLE_STONE (one block — classic stone brick look).
+   *   • Ceiling:  WOOD planks  (warm classic Minecraft cabin/dungeon feel).
+   *   • Lighting: TORCH        (the iconic vanilla light source).
+   *   • Glass strip at the top of each wall as a thin clerestory.
+   *
+   * The outer mouth opens directly into the vestibule (no busy lintel
+   * arrangement); the proper entrance gate is built by _generateVestibule.
    */
   _generateTunnelGate(chunk, lx, wx, lz, wz) {
     if (!this._isTunnelCorridor(wx, wz)) return;
@@ -444,207 +441,68 @@ export default class StadiumGenerator {
     let sl = this.seaLevel;
     let absX = Math.abs(wx);
 
-    // Geometry zones along the z axis (from pitch side to outside):
-    //   • innerMouth:  z = TUNNEL_INNER_Z + 1 — glass arched portal toward pitch.
-    //   • corridor:    bulk of the tunnel — marble floor, glass walls, arched roof.
-    //   • outerPortal: last 3 z-rows toward the vestibule — wider, taller, lintel.
-    //   • portalOpen:  outermost row, no roof (sky-open at outer mouth).
-    const outerPortal = wz <= this.TUNNEL_OUTER_Z + 3;
-    const portalOpen = wz <= this.TUNNEL_OUTER_Z + 1;
-    const innerMouth = wz === this.TUNNEL_INNER_Z + 1;
+    const portalOpen = wz <= this.TUNNEL_OUTER_Z + 1; // last 2 rows: open sky
 
-    // Wall-tops and ceiling vary by zone for visual hierarchy.
-    const INNER_ROOF_Y = 6; // taller than before — 5 blocks of clearance
-    const OUTER_ROOF_Y = 8;
-    const ROOF_Y = outerPortal ? OUTER_ROOF_Y : INNER_ROOF_Y;
-    const WALL_TOP = ROOF_Y - 1;
-    const TRIM_Y = 2; // chest-height accent trim row
+    const ROOF_Y = 5; // 4 blocks of headroom
+    const WALL_TOP = ROOF_Y - 1; // y=4 — top course of cobble
+    // Torch every 4 blocks along each wall, at chest height.
+    const torchBay = Math.abs(wz) % 4 === 0;
 
-    // Sponsor panels every 6 blocks along the corridor walls — gives the
-    // walk-in a rhythm of branded signage.
-    const sponsorBay = !outerPortal && wz % 6 === 0;
-    // LED ring lights every 3 blocks down the centreline of the ceiling.
-    const lightRing = !outerPortal && absX === 0 && Math.abs(wz) % 3 === 0;
-
-    // ----- FLOOR -----
-    // Polished marble floor with a 3-block red carpet runner down the centre.
+    // ----- FLOOR ----- clean white pitch line.
     if (absX <= 4) {
-      let block;
-      if (absX <= 1) {
-        block = BlockRegistry.TUNNEL_CARPET.getId(); // centre red carpet
-      } else {
-        block = BlockRegistry.TUNNEL_MARBLE.getId(); // surrounding marble
-      }
-      chunk.setBlockAt(lx, sl, lz, block);
+      chunk.setBlockAt(lx, sl, lz, BlockRegistry.PITCH_LINE.getId());
     }
 
-    // ----- WALLS -----
-    // Corridor walls live at |wx| == 4. Outer portal expands to |wx| == 5.
-    const wallAbsX = outerPortal ? 5 : 4;
-    if (absX === wallAbsX) {
+    // ----- WALLS ----- cobblestone with a single torch every 4 blocks.
+    if (absX === 4) {
       for (let y = 1; y <= WALL_TOP; y++) {
-        let block;
-        if (sponsorBay && y === TRIM_Y + 2) {
-          // Sponsor panel insets at chest+1 height every 6 blocks.
-          block = BlockRegistry.TUNNEL_SPONSOR.getId();
-        } else if (y === TRIM_Y) {
-          // Chest-height accent trim band — red over teal team colours.
-          block = BlockRegistry.TUNNEL_TRIM.getId();
-        } else if (y === 1) {
-          // Bottom row in fluted concrete for tactile/scaled lower wall.
-          block = BlockRegistry.TUNNEL_FLUTED.getId();
-        } else if (y === WALL_TOP) {
-          // Top cornice trim — metal railing.
-          block = BlockRegistry.METAL_RAILING.getId();
-        } else {
-          // Upper wall body in frosted glass — lets ambient light through and
-          // makes the corridor read as modern, not as a closed box.
-          block = BlockRegistry.TUNNEL_GLASS.getId();
-        }
-        chunk.setBlockAt(lx, sl + y, lz, block);
+        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
       }
+    }
+    // Torch placed in the interior, hanging on the inner wall face.
+    if (torchBay && absX === 3 && !portalOpen) {
+      chunk.setBlockAt(lx, sl + 3, lz, BlockRegistry.TORCH.getId());
     }
 
-    // ----- OUTER PORTAL COLUMNS + LINTEL -----
-    // Tall steel-truss columns at the corners frame the outside entrance.
-    if (outerPortal && absX === 5) {
-      for (let y = 1; y <= OUTER_ROOF_Y; y++) {
-        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.STEEL_TRUSS.getId());
-      }
-      // Corner topper in red carpet/trim colours for visibility.
-      chunk.setBlockAt(
-        lx,
-        sl + OUTER_ROOF_Y + 1,
-        lz,
-        BlockRegistry.TUNNEL_TRIM.getId(),
-      );
-    }
-    // Lintel: a 1-block-thick header just below the outer roof. Centre is
-    // the scoreboard, flanked by LED boards.
-    if (
-      outerPortal &&
-      !portalOpen &&
-      wz === this.TUNNEL_OUTER_Z + 3 &&
-      absX <= 4
-    ) {
-      let block;
-      if (absX <= 1) {
-        block = BlockRegistry.SCOREBOARD.getId();
-      } else if (absX <= 3) {
-        block = BlockRegistry.LED_BOARD_RED.getId();
-      } else {
-        block = BlockRegistry.LED_BOARD_PURPLE.getId();
-      }
-      chunk.setBlockAt(lx, sl + OUTER_ROOF_Y - 1, lz, block);
-    }
-
-    // ----- CEILING -----
-    // Arched panels cover the corridor; LED rings recessed at intervals.
-    if (absX <= wallAbsX) {
-      let block;
-      if (portalOpen && absX <= 4) {
-        block = null; // open sky at the outermost row
-      } else if (lightRing) {
-        block = BlockRegistry.TUNNEL_LED_RING.getId();
-      } else {
-        block = BlockRegistry.TUNNEL_ARCH.getId();
-      }
-      if (block !== null) {
-        chunk.setBlockAt(lx, sl + ROOF_Y, lz, block);
-      }
-    }
-
-    // ----- INNER MOUTH GLASS ARCH -----
-    // Half-pipe of glass above the pitch-side doorway gives a dramatic view
-    // out onto the pitch. Built as a 1-block-thick arch ring just outside
-    // the corridor's normal ceiling.
-    if (innerMouth) {
-      // Glass shoulders on either side of the doorway (above the wall).
-      if (absX === 4) {
-        for (let y = 1; y <= WALL_TOP - 1; y++) {
-          // Replace upper wall with full glass for a "stadium reveal" effect.
-          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.TUNNEL_GLASS.getId());
-        }
-      }
-      // LED banner directly above the doorway facing the pitch.
-      if (absX <= 3) {
-        chunk.setBlockAt(
-          lx,
-          sl + WALL_TOP,
-          lz,
-          BlockRegistry.LED_TEXT_GOAL.getId(),
-        );
-      }
+    // ----- CEILING ----- wood planks. No LED rings — the torches light it.
+    if (absX <= 4 && !portalOpen) {
+      chunk.setBlockAt(lx, sl + ROOF_Y, lz, BlockRegistry.WOOD.getId());
     }
   }
 
   /**
-   * Outer vestibule — open-air entrance plaza in front of the tunnel mouth.
+   * Outer vestibule + classic stone entrance gate.
    *
-   *   • Marble surface with a red-carpet runway down the centre.
-   *   • 4-step staircase descending from the surrounding Perlin terrain
-   *     down to the vestibule floor (which sits at sea level = stadium floor).
-   *   • Perimeter railing on the OUTER three sides (the inner side opens
-   *     directly into the tunnel mouth).
-   *   • Two sponsor billboard towers at the far back corners (3 blocks tall).
-   *   • Four FLOODLIGHT panels on the perimeter for nighttime atmosphere.
+   * Replaces the previous stairs + billboards + railing mess with a calm
+   * pitch-line plaza and one proper arched COBBLESTONE gate at the outer
+   * end. Torches flank the gate for atmospheric lighting.
    */
   _generateVestibule(chunk, lx, wx, lz, wz) {
     let sl = this.seaLevel;
     let absX = Math.abs(wx);
-    let backWall = wz === this.VESTIBULE_OUTER_Z;
-    let edgeX = absX === this.VESTIBULE_HALF_W;
-    let perimeter = backWall || edgeX;
 
-    // ----- FLOOR -----
-    if (absX <= 1) {
-      // Centre red-carpet runway.
-      chunk.setBlockAt(lx, sl, lz, BlockRegistry.TUNNEL_CARPET.getId());
-    } else if (absX <= 7) {
-      // Surrounding marble apron.
-      chunk.setBlockAt(lx, sl, lz, BlockRegistry.TUNNEL_MARBLE.getId());
-    } else {
-      // Dark-concrete border / sidewalk band.
-      chunk.setBlockAt(lx, sl, lz, BlockRegistry.CONCRETE_DARK.getId());
-    }
+    // ----- FLAT PLAZA FLOOR ----- same pitch-line as the tunnel for continuity.
+    chunk.setBlockAt(lx, sl, lz, BlockRegistry.PITCH_LINE.getId());
 
-    // ----- 4-STEP STAIRCASE descending from the OUTER back side -----
-    // The four rows at wz = VESTIBULE_OUTER_Z - 0 … -3 each rise 1 block.
-    // The Perlin terrain outside often sits higher than sl, so this gives
-    // the player a clean stepped approach down into the vestibule.
-    const stepIdx = wz - this.VESTIBULE_OUTER_Z; // 0 at back wall
-    if (stepIdx < this.STAIR_STEPS && absX <= 6) {
-      // Build steps RISING outward (each row's top is 1 block higher than
-      // the next inner row). We only place the riser blocks; the apron
-      // already covered y=sl.
-      const stepHeight = this.STAIR_STEPS - stepIdx; // 4..1
-      for (let y = 1; y <= stepHeight; y++) {
-        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.CONCRETE_DARK.getId());
+    // ----- ENTRANCE GATE at the outermost back row -----
+    // Two cobblestone pillars at |wx| = 4 flank a 7-block-wide opening,
+    // crowned by a 1-block-thick cobblestone lintel.
+    if (wz === this.VESTIBULE_OUTER_Z) {
+      if (absX === 4) {
+        // Side columns: 5 blocks of cobblestone for an imposing classic gate.
+        for (let y = 1; y <= 5; y++) {
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
+        }
+        // Cap-stone torch on each side of the gate.
+        chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.TORCH.getId());
+      } else if (absX < 4) {
+        // Lintel across the opening at y=5.
+        chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.COBBLE_STONE.getId());
       }
     }
-
-    // ----- PERIMETER RAILING -----
-    // Knee-high railing on the back wall + side walls — but NOT in the
-    // staircase footprint, otherwise it'd block descent.
-    if (perimeter && !(stepIdx < this.STAIR_STEPS && absX <= 6)) {
-      chunk.setBlockAt(lx, sl + 1, lz, BlockRegistry.METAL_RAILING.getId());
-    }
-
-    // ----- SPONSOR BILLBOARD TOWERS at the back corners -----
-    // 3 blocks tall, 2 blocks wide. Position: right at the back outer
-    // corners, just inside the railing.
-    const towerZ = this.VESTIBULE_OUTER_Z + 1;
-    const towerX = this.VESTIBULE_HALF_W - 2;
-    if (wz === towerZ && (absX === towerX || absX === towerX - 1)) {
-      for (let y = 1; y <= 3; y++) {
-        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.TUNNEL_SPONSOR.getId());
-      }
-    }
-
-    // ----- FLOODLIGHTS at the side mid-points -----
-    if (edgeX && wz === this.VESTIBULE_OUTER_Z + 4) {
-      chunk.setBlockAt(lx, sl + 1, lz, BlockRegistry.FLOODLIGHT.getId());
-      chunk.setBlockAt(lx, sl + 2, lz, BlockRegistry.REDSTONE_LAMP_ON.getId());
+    // Torches flanking the gate from inside (one block in from the columns).
+    if (wz === this.VESTIBULE_OUTER_Z + 1 && absX === 3) {
+      chunk.setBlockAt(lx, sl + 3, lz, BlockRegistry.TORCH.getId());
     }
   }
 
