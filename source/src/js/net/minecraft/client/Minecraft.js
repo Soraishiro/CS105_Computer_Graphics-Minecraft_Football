@@ -197,7 +197,7 @@ export default class Minecraft {
         "magmacube",
       ];
 
-      // Stadium geometry constants
+      // Stadium geometry constants — must match StadiumGenerator
       let sl = 64; // base Y of stadium surface
       let halfLength = 30; // half-length along X (goal sides)
       let halfWidth = 21; // half-width along Z (side stands)
@@ -205,61 +205,104 @@ export default class Minecraft {
       let STAND_TIERS = 6;
       let STAND_SLOPE = 2;
 
-      // Scan ONLY the north stand (wz > 0, opposite the tunnel which is at wz < 0)
-      // North stand: dZ is the dominant direction, not a goal side.
+      // Scan ALL FOUR stands. The seat/wall/aisle filters must mirror
+      // StadiumGenerator._generateStands so spectators only land on real seat blocks.
       let seatPositions = [];
-      let maxStandZ = halfWidth + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
-      for (let wx = -50; wx <= 50; wx++) {
-        for (let wz = halfWidth + STAND_MARGIN; wz <= maxStandZ; wz++) {
+      let footprintX =
+        halfLength + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
+      let footprintZ = halfWidth + STAND_MARGIN + STAND_TIERS * STAND_SLOPE + 3;
+
+      for (let wx = -footprintX; wx <= footprintX; wx++) {
+        for (let wz = -footprintZ; wz <= footprintZ; wz++) {
           let dX = Math.abs(wx) - halfLength;
-          let dZ = wz - halfWidth; // always positive (north side only)
+          let dZ = Math.abs(wz) - halfWidth;
+          let dist = Math.max(dX, dZ); // Chebyshev distance from pitch edge
 
-          // This must be the side stand (dZ dominant), not goal-side corner
-          if (dX >= dZ - 1) continue; // skip corner/goal-side overlap
-
-          let dist = Math.max(dX, dZ);
+          // Must be inside the stand zone, but not the top border row
+          if (dist < STAND_MARGIN) continue;
           let standDist = dist - STAND_MARGIN;
-          if (standDist < 0) continue;
-
           let tier = Math.floor(standDist / STAND_SLOPE);
-          if (tier >= STAND_TIERS - 1) continue; // exclude top border row
+          if (tier >= STAND_TIERS - 1) continue;
 
-          let height = tier + 1;
+          // Diagonal corner gap — matches StadiumGenerator line 260
+          if (Math.abs(dX - dZ) <= 1) continue;
 
-          // Exclude walkway aisles along X
-          let span = halfLength * 2;
-          let step = Math.floor(span / 4);
-          let relX = wx + halfLength;
-          let isAisle = relX > 0 && relX < span && relX % step === 0;
+          let isGoalSide = dX > dZ;
+
+          // Tunnel gate hole on -Z side — matches StadiumGenerator line 266
+          if (!isGoalSide && wz < 0 && Math.abs(wx) <= 5 && wz >= -35) continue;
+
+          // Side boundary walls — matches StadiumGenerator line 272 (edgeDist === 2)
+          if (Math.abs(dX - dZ) === 2) continue;
+
+          // Walkway aisles per stand face
+          let isAisle;
+          if (isGoalSide) {
+            let span = halfWidth * 2;
+            let step = Math.floor(span / 4);
+            let relZ = wz + halfWidth;
+            isAisle = relZ > 0 && relZ < span && relZ % step === 0;
+          } else {
+            let span = halfLength * 2;
+            let step = Math.floor(span / 4);
+            let relX = wx + halfLength;
+            isAisle = relX > 0 && relX < span && relX % step === 0;
+          }
           if (isAisle) continue;
 
-          // Y+1: place entity on TOP of the seat block surface
-          seatPositions.push({ x: wx, y: sl + height + 1, z: wz });
+          // Yaw so each mob faces the pitch centre
+          let yawAngle;
+          if (isGoalSide) {
+            yawAngle = wx > 0 ? 270 : 90; // east faces -X, west faces +X
+          } else {
+            yawAngle = wz > 0 ? 0 : 180; // north faces -Z, south faces +Z
+          }
+
+          let height = tier + 1;
+          seatPositions.push({
+            x: wx + 0.5, // centre of block
+            y: sl + height + 1, // feet on top surface of seat block
+            z: wz + 0.5,
+            yawAngle: yawAngle,
+          });
         }
       }
 
-      // All mobs face south (toward pitch) — yaw 180 for north stand
-      const SPECTATOR_YAW = 180;
+      // Deterministic Fisher–Yates shuffle so spacing is even and reproducible.
+      // Sampling ~50% of seats naturally produces visible gaps between mobs
+      // instead of the solid wall you get when every seat is filled.
+      let rng = new Random(0x5eed5eed);
+      for (let i = seatPositions.length - 1; i > 0; i--) {
+        let j = rng.nextInt(i + 1);
+        let tmp = seatPositions[i];
+        seatPositions[i] = seatPositions[j];
+        seatPositions[j] = tmp;
+      }
 
-      // Build spawn queue — fill all valid north-stand seats (cap 400 for WebGL perf)
-      const MAX_SPECTATORS = 400;
-      let selectedSeats = seatPositions.slice(0, MAX_SPECTATORS);
+      const FILL_RATIO = 0.5; // ~50% occupancy per stand
+      const MAX_SPECTATORS = 600; // hard cap for WebGL perf
+      let targetCount = Math.min(
+        Math.floor(seatPositions.length * FILL_RATIO),
+        MAX_SPECTATORS,
+      );
+      let selectedSeats = seatPositions.slice(0, targetCount);
 
       let spectatorsToSpawn = [];
       for (let i = 0; i < selectedSeats.length; i++) {
         let seat = selectedSeats[i];
-        let mobName = MOB_NAMES[i % MOB_NAMES.length]; // cycle through all types evenly
+        let mobName = MOB_NAMES[i % MOB_NAMES.length];
         spectatorsToSpawn.push({
           x: seat.x,
           y: seat.y,
           z: seat.z,
           mobName: mobName,
-          yawAngle: SPECTATOR_YAW,
+          yawAngle: seat.yawAngle,
         });
       }
 
-      this.spectatorsToSpawnQueue = spectatorsToSpawn;
-      this.spectatorsSpawnedCount = 0;
+      // Spawned synchronously inside the loadSpawnChunksAsync completion callback,
+      // so all spectators are present before the loading screen dismisses.
+      this.pendingSpectators = spectatorsToSpawn;
 
       this.world.loadSpawnChunksAsync(
         (progress) => {
@@ -305,6 +348,27 @@ export default class Minecraft {
           referee.rotationYaw = 90; // face sideways
           referee.prevRotationYaw = 90;
           this.world.addEntity(referee);
+
+          // Spawn ALL spectators synchronously before the game becomes interactive.
+          // The chunks they live in are already loaded by this point.
+          if (this.loadingScreen !== null) {
+            this.loadingScreen.setTitle("Loading spectators...");
+          }
+          if (this.pendingSpectators) {
+            for (let i = 0; i < this.pendingSpectators.length; i++) {
+              let spec = this.pendingSpectators[i];
+              let spectator = new PlayerEntity(this, this.world, 400 + i);
+              spectator.username = spec.mobName;
+              spectator.isSpectator = true;
+              spectator.setPosition(spec.x, spec.y, spec.z);
+              spectator.rotationYaw = spec.yawAngle;
+              spectator.prevRotationYaw = spec.yawAngle;
+              spectator.rotationYawHead = spec.yawAngle;
+              spectator.prevRotationYawHead = spec.yawAngle;
+              this.world.addEntity(spectator);
+            }
+            this.pendingSpectators = null;
+          }
 
           // Focus game and dismiss loading screen
           this.displayScreen(null);
@@ -445,40 +509,6 @@ export default class Minecraft {
 
       // Tick particle renderer
       this.particleRenderer.onTick();
-
-      // Progressive Background Spawning (Option C: Arriving Crowd Effect)
-      if (
-        this.spectatorsToSpawnQueue &&
-        this.spectatorsToSpawnQueue.length > 0
-      ) {
-        let spawnBatchSize = 2; // spawn 2 spectators per tick (40 spectators per second)
-        for (
-          let i = 0;
-          i < spawnBatchSize && this.spectatorsToSpawnQueue.length > 0;
-          i++
-        ) {
-          let spec = this.spectatorsToSpawnQueue.shift();
-          let spectator = new PlayerEntity(
-            this,
-            this.world,
-            400 + this.spectatorsSpawnedCount,
-          );
-          spectator.username = spec.mobName;
-          spectator.isSpectator = true;
-
-          // Place precisely on top of the concrete seat block
-          spectator.setPosition(spec.x, spec.y, spec.z);
-
-          // Orient the spectator to face the pitch orthogonally
-          spectator.rotationYaw = spec.yawAngle;
-          spectator.prevRotationYaw = spec.yawAngle;
-          spectator.rotationYawHead = spec.yawAngle;
-          spectator.prevRotationYawHead = spec.yawAngle;
-
-          this.world.addEntity(spectator);
-          this.spectatorsSpawnedCount++;
-        }
-      }
     }
 
     // Tick the screen
