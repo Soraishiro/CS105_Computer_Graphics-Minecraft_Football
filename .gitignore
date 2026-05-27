@@ -24,3 +24,8 @@ build/
 # Env
 .env
 .env.local
+
+# Browser-automation scratch (Playwright/Chrome DevTools MCP captures)
+.playwright-mcp/
+*.crx
+after-fix-*.png
