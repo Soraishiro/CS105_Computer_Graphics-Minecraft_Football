@@ -330,58 +330,36 @@ export default class Minecraft {
       );
       let selectedSeats = seatPositions.slice(0, targetCount);
 
-      // Height-tier assignment: assign tall mobs (enderman, skeleton, zombie,
-      // villager) to BACK rows and short mobs (chicken, slime, magmacube,
-      // ocelot) to FRONT rows. This prevents a 2.9-block enderman in tier 0
-      // from occluding every shorter mob behind it.
-      //
-      // Pool key is the back-to-front weight: higher value = farther back.
-      const HEIGHT_TIER = {
-        enderman: 4,
-        skeleton: 3,
-        zombie: 3,
-        villager: 3,
-        creeper: 2,
-        sheep: 2,
-        cow: 2,
-        squid: 2,
-        wolf: 1,
-        pig: 1,
-        ocelot: 1,
-        chicken: 0,
-        slime: 0,
-        magmacube: 0,
-      };
-      // Stable-sort selectedSeats by tier ascending (front → back).
+      // Per-tier mob pools — each tier holds 4-6 compatible mob types so the
+      // crowd has variety along every row (instead of an entire back row of
+      // identical endermen). Adjacent tiers overlap so the height transition
+      // reads smoothly. Tall mobs (enderman, skeleton, zombie, villager) are
+      // still preferred near the back; small mobs (chicken, slime, magmacube,
+      // ocelot) near the front.
+      const TIER_POOLS = [
+        // Tier 0 (front row): smallest cubes + low quadrupeds
+        ["chicken", "slime", "magmacube", "ocelot", "chicken"],
+        // Tier 1: small-medium quadrupeds
+        ["pig", "wolf", "ocelot", "chicken", "cow"],
+        // Tier 2: medium mobs
+        ["cow", "sheep", "squid", "creeper", "pig", "wolf"],
+        // Tier 3: medium-tall humanoids
+        ["villager", "zombie", "skeleton", "creeper", "sheep", "cow"],
+        // Tier 4 (back row): tallest — mixed so endermen aren't 100% of it
+        ["enderman", "skeleton", "zombie", "villager"],
+      ];
       selectedSeats.sort((a, b) => a.tier - b.tier);
 
-      // Bucket mob names by HEIGHT_TIER so we can pour the buckets across the
-      // sorted seats in a parallel ascending order.
-      const mobsByTier = [[], [], [], [], []];
-      for (const name of MOB_NAMES) {
-        mobsByTier[HEIGHT_TIER[name] ?? 2].push(name);
-      }
-      // Flatten back-to-front; cycle each bucket round-robin.
-      // For each seat (in ascending tier order), pick a mob from the matching
-      // height-tier bucket; if that bucket is empty fall through to neighbours.
-      let bucketCursor = [0, 0, 0, 0, 0];
+      // Deterministic per-tier round-robin cursor (no Math.random() so spawn
+      // is reproducible across reloads).
+      const tierCursor = [0, 0, 0, 0, 0];
       function pickMobForTier(seatTier) {
-        // Cap seatTier to bucket count - 1.
-        const cap = mobsByTier.length - 1;
-        // Try the exact tier first, then expand outward.
-        for (let d = 0; d <= cap; d++) {
-          for (const sign of [-1, +1]) {
-            if (d === 0 && sign === +1) continue;
-            const t = seatTier + d * sign;
-            if (t < 0 || t > cap) continue;
-            const pool = mobsByTier[t];
-            if (pool.length === 0) continue;
-            const name = pool[bucketCursor[t] % pool.length];
-            bucketCursor[t]++;
-            return name;
-          }
-        }
-        return MOB_NAMES[0]; // fallback
+        const cap = TIER_POOLS.length - 1;
+        const t = Math.max(0, Math.min(cap, seatTier));
+        const pool = TIER_POOLS[t];
+        const name = pool[tierCursor[t] % pool.length];
+        tierCursor[t]++;
+        return name;
       }
 
       let spectatorsToSpawn = [];
