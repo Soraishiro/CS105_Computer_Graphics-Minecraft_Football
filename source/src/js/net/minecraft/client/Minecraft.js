@@ -355,9 +355,13 @@ export default class Minecraft {
       // still preferred near the back; small mobs (chicken, slime, magmacube,
       // ocelot) near the front.
       const TIER_POOLS = [
-        // Tier 0 (front row): smallest cubes + low quadrupeds
-        ["chicken", "slime", "magmacube", "ocelot", "chicken"],
-        // Tier 1: small-medium quadrupeds
+        // Tier 0 (front row): only mobs with a clear vertical silhouette
+        // from a low camera angle. Horizontal quadrupeds (ocelot, wolf)
+        // are excluded here because their flat 4×12 body becomes an
+        // unreadable "slab" when viewed from above-front.
+        ["chicken", "slime", "magmacube", "chicken", "slime"],
+        // Tier 1: small-medium quadrupeds — far enough back that the body
+        // shape reads correctly.
         ["pig", "wolf", "ocelot", "chicken", "cow"],
         // Tier 2: medium mobs
         ["cow", "sheep", "squid", "creeper", "pig", "wolf"],
