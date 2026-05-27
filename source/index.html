@@ -1,7 +1,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Minecraft</title>
+    <title>Minecraft Stadium — CS105</title>
     <meta
       name="viewport"
       content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height"
@@ -21,42 +21,127 @@
       <div id="canvas-container" class="fullscreen"></div>
     </div>
 
-    <!-- Controls Overlay HUD -->
-    <div id="controls-overlay">
-      <h3>⚽ STADIUM CONTROLS</h3>
-      <div class="control-row">
-        <span class="keys-group">
-          <span class="key-cap">W</span><span class="key-cap">A</span><span class="key-cap">S</span><span class="key-cap">D</span>
-        </span>
-        <span class="control-desc">Di chuyển (Move)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap font-wide">Space</span>
-        <span class="control-desc">Nhảy (Jump)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap font-wide">2x Space</span>
-        <span class="control-desc">Bay (Fly Mode)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap font-wide">Space</span> / <span class="key-cap font-wide">Shift</span>
-        <span class="control-desc">Bay Lên / Xuống</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap font-wide">Ctrl</span> / <span class="key-cap">2x W</span>
-        <span class="control-desc">Chạy nhanh (Sprint)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap font-wide">F5</span>
-        <span class="control-desc">Góc nhìn (Cam View)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap">E</span>
-        <span class="control-desc">Kho đồ (Inventory)</span>
-      </div>
-      <div class="control-row">
-        <span class="key-cap">T</span>
-        <span class="control-desc">Khung Chat (Chat)</span>
+    <!-- Loading Overlay (visible during asset preload + world generation) -->
+    <div id="loading-overlay" class="active">
+      <div class="loading-backdrop"></div>
+
+      <div class="loading-content">
+        <header class="loading-header">
+          <h1 class="loading-title">
+            <span class="title-emoji">⚽</span>
+            Minecraft Stadium
+          </h1>
+          <p class="loading-subtitle">CS105 — Computer Graphics</p>
+        </header>
+
+        <section class="loading-progress-block">
+          <div class="loading-stage" id="loading-stage">Preparing assets…</div>
+          <div class="loading-bar">
+            <div class="loading-bar-fill" id="loading-bar-fill"></div>
+            <div class="loading-bar-shine"></div>
+          </div>
+          <div class="loading-percent" id="loading-percent">0%</div>
+        </section>
+
+        <section class="loading-tips">
+          <h3 class="loading-tips-title">🎮 STADIUM CONTROLS</h3>
+
+          <div class="tips-grid">
+            <div class="tips-group">
+              <h4>Movement</h4>
+              <div class="control-row">
+                <span class="keys-group">
+                  <span class="key-cap">W</span><span class="key-cap">A</span
+                  ><span class="key-cap">S</span><span class="key-cap">D</span>
+                </span>
+                <span class="control-desc">Di chuyển</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap font-wide">Space</span>
+                <span class="control-desc">Nhảy</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap font-wide">2× Space</span>
+                <span class="control-desc">Bay (Fly)</span>
+              </div>
+              <div class="control-row">
+                <span class="keys-group">
+                  <span class="key-cap font-wide">Space</span>
+                  <span class="key-sep">/</span>
+                  <span class="key-cap font-wide">Shift</span>
+                </span>
+                <span class="control-desc">Lên / Xuống</span>
+              </div>
+              <div class="control-row">
+                <span class="keys-group">
+                  <span class="key-cap font-wide">Ctrl</span>
+                  <span class="key-sep">/</span>
+                  <span class="key-cap">2× W</span>
+                </span>
+                <span class="control-desc">Chạy nhanh</span>
+              </div>
+            </div>
+
+            <div class="tips-group">
+              <h4>View &amp; Camera</h4>
+              <div class="control-row">
+                <span class="key-cap font-wide">Mouse</span>
+                <span class="control-desc">Xoay góc nhìn</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap">F5</span>
+                <span class="control-desc">Góc nhìn 1st/3rd</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap">F3</span>
+                <span class="control-desc">Debug overlay</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap">Tab</span>
+                <span class="control-desc">Player list</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap">Esc</span>
+                <span class="control-desc">Tạm dừng (Pause)</span>
+              </div>
+            </div>
+
+            <div class="tips-group">
+              <h4>Interface</h4>
+              <div class="control-row">
+                <span class="key-cap">E</span>
+                <span class="control-desc">Kho đồ (Inventory)</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap">T</span>
+                <span class="control-desc">Chat box</span>
+              </div>
+              <div class="control-row">
+                <span class="keys-group">
+                  <span class="key-cap">1</span>
+                  <span class="key-sep">…</span>
+                  <span class="key-cap">9</span>
+                </span>
+                <span class="control-desc">Chọn slot hotbar</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap font-wide">L-Click</span>
+                <span class="control-desc">Phá khối / Đá</span>
+              </div>
+              <div class="control-row">
+                <span class="key-cap font-wide">R-Click</span>
+                <span class="control-desc">Đặt khối</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="loading-footer">
+          <span class="loading-spinner"></span>
+          <span id="loading-hint"
+            >Loading the stadium — this may take a moment on first launch.</span
+          >
+        </footer>
       </div>
     </div>
   </body>

@@ -13,6 +13,7 @@ import FontRenderer from "./render/gui/FontRenderer.js";
 import GrassColorizer from "./render/GrassColorizer.js";
 import GuiMainMenu from "./gui/screens/GuiMainMenu.js";
 import GuiLoadingScreen from "./gui/screens/GuiLoadingScreen.js";
+import { getLoadingOverlay } from "./gui/LoadingOverlay.js";
 import * as THREE from "../../../../../libraries/three.module.js";
 import ParticleRenderer from "./render/particle/ParticleRenderer.js";
 import GuiChat from "./gui/screens/GuiChat.js";
@@ -109,6 +110,11 @@ export default class Minecraft {
     // Show main menu on startup
     this.displayScreen(new GuiMainMenu());
 
+    // Texture + atlas + engine boot done — hide the HTML loading overlay
+    // so the user sees the main menu. It will be re-shown when the
+    // singleplayer world starts loading.
+    getLoadingOverlay().hide();
+
     // Initialize
     this.init();
   }
@@ -156,9 +162,22 @@ export default class Minecraft {
       }
       this.displayScreen(new GuiMainMenu());
     } else {
+      // Re-arm the HTML overlay for the world-load phase. The boot stages
+      // (textures/atlas/boot) have already been consumed and hidden after
+      // the main menu appeared, so we start a fresh weighted pipeline here.
+      const overlay = getLoadingOverlay();
+      overlay.setStages([
+        { id: "world", label: "Building terrain", weight: 65 },
+        { id: "entities", label: "Loading spectators", weight: 30 },
+        { id: "finalize", label: "Entering the stadium", weight: 5 },
+      ]);
+      overlay.show();
+      overlay.beginStage("world");
+      overlay.setHint("Streaming chunks around the pitch…");
+
       // Display loading screen
       this.loadingScreen = new GuiLoadingScreen();
-      this.loadingScreen.setTitle("Building terrain...");
+      this.loadingScreen.setTitle("Streaming chunks around the pitch…");
       this.displayScreen(this.loadingScreen);
 
       // Clear previous world
@@ -311,15 +330,18 @@ export default class Minecraft {
           }
         },
         () => {
+          overlay.completeStage();
+          overlay.beginStage("entities");
+          overlay.setHint("Players warming up on the pitch…");
+
           this.player.respawn();
 
           // Face toward the pitch (+Z direction) from inside the tunnel.
-          // rotationYaw=180 maps to look-vector z = cos(-180°*π/180 - π) = cos(0) = +1.
           this.player.rotationYaw = 180;
           this.player.prevRotationYaw = 180;
 
           // Spawn football
-          let ball = new BallEntity(this, this.world, 100); // ID 100 for ball
+          let ball = new BallEntity(this, this.world, 100);
           ball.setPosition(0, 70, 0);
           this.world.addEntity(ball);
 
@@ -328,9 +350,9 @@ export default class Minecraft {
             let sub = new PlayerEntity(this, this.world, 200 + i);
             sub.username = "Sub " + (i + 1);
             let x = i < 3 ? -4.5 - i * 1.5 : 4.5 + (i - 3) * 1.5;
-            let z = -20; // Standing near the tunnel
+            let z = -20;
             sub.setPosition(x, this.world.getHeightAt(x, z), z);
-            sub.rotationYaw = 0; // facing the pitch (+Z)
+            sub.rotationYaw = 0;
             if (i < 3) {
               sub.isBarcelona = true;
             } else {
@@ -340,42 +362,84 @@ export default class Minecraft {
           }
 
           // Spawn referee in the middle of the pitch
-          let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
+          let referee = new PlayerEntity(this, this.world, 300);
           referee.username = "Referee";
           referee.isReferee = true;
           let refY = this.world.getHeightAt(0, 0);
           referee.setPosition(0, refY, 0);
-          referee.rotationYaw = 90; // face sideways
+          referee.rotationYaw = 90;
           referee.prevRotationYaw = 90;
           this.world.addEntity(referee);
 
-          // Spawn ALL spectators synchronously before the game becomes interactive.
-          // The chunks they live in are already loaded by this point.
           if (this.loadingScreen !== null) {
-            this.loadingScreen.setTitle("Loading spectators...");
+            this.loadingScreen.setTitle("Filling the stands…");
           }
-          if (this.pendingSpectators) {
-            for (let i = 0; i < this.pendingSpectators.length; i++) {
-              let spec = this.pendingSpectators[i];
-              let spectator = new PlayerEntity(this, this.world, 400 + i);
-              spectator.username = spec.mobName;
-              spectator.isSpectator = true;
-              spectator.setPosition(spec.x, spec.y, spec.z);
-              spectator.rotationYaw = spec.yawAngle;
-              spectator.prevRotationYaw = spec.yawAngle;
-              spectator.rotationYawHead = spec.yawAngle;
-              spectator.prevRotationYawHead = spec.yawAngle;
-              this.world.addEntity(spectator);
-            }
-            this.pendingSpectators = null;
-          }
+          overlay.setHint("Filling the stands…");
 
-          // Focus game and dismiss loading screen
-          this.displayScreen(null);
-          this.loadingScreen = null;
+          // Batched, non-blocking spectator spawn. setTimeout(_, 0) yields
+          // to the event loop after each batch so the progress bar repaints
+          // instead of freezing on a single big synchronous loop.
+          this._batchSpawnSpectators().then(() => {
+            overlay.completeStage();
+            overlay.beginStage("finalize");
+            overlay.setHint("Welcome to the stadium!");
+
+            // Give the renderer one frame to settle so the first visible
+            // frame after the overlay fades isn't blank.
+            requestAnimationFrame(() => {
+              overlay.completeStage();
+              overlay.hide();
+              this.displayScreen(null);
+              this.loadingScreen = null;
+            });
+          });
         },
       );
     }
+  }
+
+  /**
+   * Spawn the queued spectators in batches across animation frames.
+   *
+   * Spawning 600 entities in one synchronous tick freezes the main thread
+   * for ~300ms and prevents the progress bar from advancing. Yielding via
+   * setTimeout after each batch lets the browser repaint and keeps the
+   * loading UI alive even on slower machines.
+   */
+  _batchSpawnSpectators() {
+    return new Promise((resolve) => {
+      const overlay = getLoadingOverlay();
+      const list = this.pendingSpectators || [];
+      if (list.length === 0) {
+        resolve();
+        return;
+      }
+      const BATCH_SIZE = 60;
+      let i = 0;
+      const tick = () => {
+        const end = Math.min(i + BATCH_SIZE, list.length);
+        for (; i < end; i++) {
+          const spec = list[i];
+          const spectator = new PlayerEntity(this, this.world, 400 + i);
+          spectator.username = spec.mobName;
+          spectator.isSpectator = true;
+          spectator.setPosition(spec.x, spec.y, spec.z);
+          spectator.rotationYaw = spec.yawAngle;
+          spectator.prevRotationYaw = spec.yawAngle;
+          spectator.rotationYawHead = spec.yawAngle;
+          spectator.prevRotationYawHead = spec.yawAngle;
+          this.world.addEntity(spectator);
+        }
+        overlay.setStageFraction(i / list.length);
+        if (i < list.length) {
+          setTimeout(tick, 0);
+        } else {
+          this.pendingSpectators = null;
+          resolve();
+        }
+      };
+      tick();
+    });
   }
 
   hasInGameFocus() {
