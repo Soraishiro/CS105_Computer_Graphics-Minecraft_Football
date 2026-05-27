@@ -167,5 +167,40 @@ export class BlockRegistry {
       127,
       StadiumTextures.FLOODLIGHT_PANEL_BLOCK,
     );
+
+    // Procedural tunnel-decoration blocks (textures generated at runtime in
+    // src/js/net/minecraft/client/render/ProceduralTextures.js).
+    BlockRegistry.TUNNEL_GLASS = new BlockTurf(
+      128,
+      StadiumTextures.TUNNEL_GLASS_PANEL,
+    );
+    BlockRegistry.TUNNEL_MARBLE = new BlockTurf(
+      129,
+      StadiumTextures.TUNNEL_MARBLE_FLOOR,
+    );
+    BlockRegistry.TUNNEL_CARPET = new BlockTurf(
+      130,
+      StadiumTextures.TUNNEL_RED_CARPET,
+    );
+    BlockRegistry.TUNNEL_ARCH = new BlockTurf(
+      131,
+      StadiumTextures.TUNNEL_ARCH_SEGMENT,
+    );
+    BlockRegistry.TUNNEL_LED_RING = new BlockTurf(
+      132,
+      StadiumTextures.TUNNEL_LED_RING,
+    );
+    BlockRegistry.TUNNEL_SPONSOR = new BlockTurf(
+      133,
+      StadiumTextures.TUNNEL_SPONSOR_PANEL,
+    );
+    BlockRegistry.TUNNEL_TRIM = new BlockTurf(
+      134,
+      StadiumTextures.TUNNEL_ACCENT_TRIM,
+    );
+    BlockRegistry.TUNNEL_FLUTED = new BlockTurf(
+      135,
+      StadiumTextures.TUNNEL_FLUTED_PANEL,
+    );
   }
 }

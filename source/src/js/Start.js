@@ -1,6 +1,7 @@
 import Minecraft from "./net/minecraft/client/Minecraft.js";
 import * as aesjs from "../../libraries/aes.js";
 import { getLoadingOverlay } from "./net/minecraft/client/gui/LoadingOverlay.js";
+import { buildProceduralTextureCanvases } from "./net/minecraft/client/render/ProceduralTextures.js";
 
 class Start {
   /**
@@ -135,6 +136,20 @@ class Start {
     });
 
     return Promise.all(promises).then(() => {
+      // Paint procedurally-generated tunnel textures into reserved slots
+      // 242–249. These have no PNG source — they're drawn in code so they can
+      // be edited and version-controlled like everything else in this module.
+      const procCanvases = buildProceduralTextureCanvases();
+      for (const slotStr of Object.keys(procCanvases)) {
+        const slot = parseInt(slotStr, 10);
+        const col = slot % 16;
+        const row = Math.floor(slot / 16);
+        const px = col * 16;
+        const py = row * 16;
+        ctx.clearRect(px, py, 16, 16);
+        ctx.drawImage(procCanvases[slot], px, py, 16, 16);
+      }
+
       let stitchedImg = new Image();
       stitchedImg.src = canvas.toDataURL();
       resources["terrain/terrain_stadium.png"] = stitchedImg;
