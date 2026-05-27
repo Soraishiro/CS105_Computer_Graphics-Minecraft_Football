@@ -72,6 +72,14 @@ export default class EntityRenderer {
       return true;
     }
 
+    // Spectators never move and never need lighting-driven rebuilds. The
+    // brightness diff would otherwise tick every frame during day/night blend
+    // and rebuild all 600 spectator meshes — wasted work that can also cause
+    // momentary geometry flicker.
+    if (entity.isSpectator) {
+      return false;
+    }
+
     // Compare meta of group
     let currentMeta = {};
     this.fillMeta(entity, currentMeta);

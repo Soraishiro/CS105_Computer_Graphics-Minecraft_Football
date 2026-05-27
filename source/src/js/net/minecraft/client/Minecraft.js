@@ -287,12 +287,15 @@ export default class Minecraft {
           }
           if (isAisle) continue;
 
-          // Yaw so each mob faces the pitch centre
+          // Yaw so each mob faces the pitch centre. EntityRenderer applies a
+          // hard-coded +180° at render time (this.group.rotation.y = -body+180);
+          // we pre-compensate by setting the OPPOSITE world yaw here so the
+          // final rendered facing lands on the pitch instead of away from it.
           let yawAngle;
           if (isGoalSide) {
-            yawAngle = wx > 0 ? 270 : 90; // east faces -X, west faces +X
+            yawAngle = wx > 0 ? 90 : 270; // east stand faces -X, west stand faces +X
           } else {
-            yawAngle = wz > 0 ? 0 : 180; // north faces -Z, south faces +Z
+            yawAngle = wz > 0 ? 180 : 0; // north stand faces -Z, south stand faces +Z
           }
 
           let height = tier + 1;
