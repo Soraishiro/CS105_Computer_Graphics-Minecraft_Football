@@ -2,6 +2,7 @@ import Entity from "/src/js/net/minecraft/client/entity/Entity.js";
 import MathHelper from "/src/js/net/minecraft/util/MathHelper.js";
 import { BlockRegistry } from "/src/js/net/minecraft/client/world/block/BlockRegistry.js";
 import * as THREE from "/libraries/three.module.js";
+import * as CANNON from "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js";
 
 export default class BallEntity extends Entity {
 
@@ -18,6 +19,10 @@ export default class BallEntity extends Entity {
         this.prevRollQuat = new THREE.Quaternion();
         this.rollAxis = new THREE.Vector3();
         this.rollDeltaQuat = new THREE.Quaternion();
+
+        this.useCannon = true;
+        this.physicsBody = null;
+        this.physicsInitialized = false;
         
         this.setPosition(0, 70, 0); // Spawn bổng lên chút để thấy nó rơi và nảy
     }
@@ -26,6 +31,13 @@ export default class BallEntity extends Entity {
         super.onUpdate();
 
         this.prevRollQuat.copy(this.rollQuat);
+
+        if (this.useCannon && this.initCannonPhysics()) {
+            this.stepCannonPhysics();
+            this.updateRollRotation();
+            this.checkPlayerCollision();
+            return;
+        }
 
         // Trọng lực
         this.motionY -= 0.04;
@@ -124,13 +136,21 @@ export default class BallEntity extends Entity {
 
                 // Truyền vận tốc từ player sang bóng (kick!)
                 let kickPower = 0.1;
-                this.motionX += dx * kickPower;
-                this.motionZ += dz * kickPower;
+                if (this.physicsBody) {
+                    this.physicsBody.velocity.x += dx * kickPower;
+                    this.physicsBody.velocity.z += dz * kickPower;
+                    if (this.onGround && this.physicsBody.velocity.y < 0.2) {
+                        this.physicsBody.velocity.y = 0.2;
+                    }
+                } else {
+                    this.motionX += dx * kickPower;
+                    this.motionZ += dz * kickPower;
+                }
 
                 this.minecraft.soundManager.playSound("random.soccer_kick", this.x, this.y, this.z, 1.0, 1.0);
                 
                 // Hơi nảy lên một chút nếu đang ở gần chân
-                if (this.onGround) {
+                if (!this.physicsBody && this.onGround) {
                     this.motionY = 0.2;
                 }
             }
@@ -138,6 +158,9 @@ export default class BallEntity extends Entity {
     }
 
     handleGoalCollision() {
+        if (this.physicsBody) {
+            return;
+        }
         if (!this.world) {
             return;
         }
@@ -217,5 +240,160 @@ export default class BallEntity extends Entity {
         }
 
         return true;
+    }
+
+    initCannonPhysics() {
+        if (!this.world || !this.minecraft) {
+            return false;
+        }
+
+        if (!this.minecraft.physicsWorld) {
+            let world = new CANNON.World();
+            world.gravity.set(0, -0.8, 0);
+            world.broadphase = new CANNON.NaiveBroadphase();
+
+            let ballMaterial = new CANNON.Material("ball");
+            let groundMaterial = new CANNON.Material("ground");
+            let postMaterial = new CANNON.Material("goalPost");
+            let netMaterial = new CANNON.Material("goalNet");
+
+            let ballGround = new CANNON.ContactMaterial(ballMaterial, groundMaterial, {
+                friction: 0.3,
+                restitution: 0.6
+            });
+            let ballPost = new CANNON.ContactMaterial(ballMaterial, postMaterial, {
+                friction: 0.2,
+                restitution: this.restitution
+            });
+            let ballNet = new CANNON.ContactMaterial(ballMaterial, netMaterial, {
+                friction: 0.6,
+                restitution: 0.2
+            });
+
+            world.addContactMaterial(ballGround);
+            world.addContactMaterial(ballPost);
+            world.addContactMaterial(ballNet);
+
+            let groundY = this.world.getHeightAt(0, 0);
+            if (groundY === 0) {
+                groundY = 64;
+            }
+
+            let groundBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+            groundBody.addShape(new CANNON.Plane());
+            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+            groundBody.position.set(0, groundY, 0);
+            world.addBody(groundBody);
+
+            this.buildGoalBodies(world, postMaterial, netMaterial, groundY);
+
+            this.minecraft.physicsWorld = world;
+            this.minecraft.physicsMaterials = {
+                ball: ballMaterial,
+                ground: groundMaterial,
+                post: postMaterial,
+                net: netMaterial
+            };
+            this.minecraft.physicsContacts = {
+                ballGround: ballGround,
+                ballPost: ballPost,
+                ballNet: ballNet
+            };
+            this.minecraft.physicsGroundY = groundY;
+        }
+
+        if (!this.physicsBody) {
+            let radius = this.width / 2;
+            this.physicsBody = new CANNON.Body({
+                mass: 0.3,
+                material: this.minecraft.physicsMaterials.ball
+            });
+            this.physicsBody.addShape(new CANNON.Sphere(radius));
+            this.physicsBody.position.set(this.x, this.y, this.z);
+            this.physicsBody.linearDamping = 0.02;
+            this.physicsBody.angularDamping = 0.4;
+            this.minecraft.physicsWorld.addBody(this.physicsBody);
+            this.physicsInitialized = false;
+        }
+
+        return true;
+    }
+
+    buildGoalBodies(world, postMaterial, netMaterial, groundY) {
+        let halfLength = 30;
+        let goalHalfWidth = 4;
+        let goalHeight = 3;
+        let goalDepth = 3;
+
+        let postHalfX = 0.5;
+        let postHalfZ = 0.5;
+        let postHalfY = goalHeight / 2;
+        let postCenterY = groundY + 1 + postHalfY;
+        let crossbarCenterY = groundY + goalHeight + 0.5;
+
+        let crossbarHalfX = 0.5;
+        let crossbarHalfY = 0.5;
+        let crossbarHalfZ = goalHalfWidth;
+
+        let netHalfX = goalDepth / 2;
+        let netHalfY = postHalfY;
+        let netHalfZ = goalHalfWidth;
+        let netCenterY = postCenterY;
+
+        this.createStaticBox(world, postMaterial, halfLength, postCenterY, goalHalfWidth, postHalfX, postHalfY, postHalfZ);
+        this.createStaticBox(world, postMaterial, halfLength, postCenterY, -goalHalfWidth, postHalfX, postHalfY, postHalfZ);
+        this.createStaticBox(world, postMaterial, halfLength, crossbarCenterY, 0, crossbarHalfX, crossbarHalfY, crossbarHalfZ);
+        this.createStaticBox(world, netMaterial, halfLength + (goalDepth / 2) + 0.5, netCenterY, 0, netHalfX, netHalfY, netHalfZ);
+
+        this.createStaticBox(world, postMaterial, -halfLength, postCenterY, goalHalfWidth, postHalfX, postHalfY, postHalfZ);
+        this.createStaticBox(world, postMaterial, -halfLength, postCenterY, -goalHalfWidth, postHalfX, postHalfY, postHalfZ);
+        this.createStaticBox(world, postMaterial, -halfLength, crossbarCenterY, 0, crossbarHalfX, crossbarHalfY, crossbarHalfZ);
+        this.createStaticBox(world, netMaterial, -halfLength - (goalDepth / 2) - 0.5, netCenterY, 0, netHalfX, netHalfY, netHalfZ);
+    }
+
+    createStaticBox(world, material, x, y, z, halfX, halfY, halfZ) {
+        let body = new CANNON.Body({ mass: 0, material: material });
+        body.addShape(new CANNON.Box(new CANNON.Vec3(halfX, halfY, halfZ)));
+        body.position.set(x, y, z);
+        world.addBody(body);
+    }
+
+    stepCannonPhysics() {
+        let physicsWorld = this.minecraft.physicsWorld;
+        if (!physicsWorld || !this.physicsBody) {
+            return;
+        }
+
+        if (!this.physicsInitialized) {
+            this.physicsBody.position.set(this.x, this.y, this.z);
+            this.physicsBody.velocity.set(this.motionX, this.motionY, this.motionZ);
+            this.physicsInitialized = true;
+        }
+
+        this.updatePhysicsFriction();
+        physicsWorld.step(1 / 20);
+
+        this.motionX = this.physicsBody.velocity.x;
+        this.motionY = this.physicsBody.velocity.y;
+        this.motionZ = this.physicsBody.velocity.z;
+
+        this.setPosition(this.physicsBody.position.x, this.physicsBody.position.y, this.physicsBody.position.z);
+
+        let groundY = this.minecraft.physicsGroundY;
+        let radius = this.width / 2;
+        this.onGround = this.physicsBody.position.y <= groundY + radius + 0.05 && Math.abs(this.motionY) < 0.2;
+    }
+
+    updatePhysicsFriction() {
+        if (!this.minecraft.physicsContacts || !this.world) {
+            return;
+        }
+
+        let rainStrength = this.world.isRaining ? (this.world.rainStrength || 0.0) : 0.0;
+        let friction = 0.3 - 0.2 * rainStrength;
+        if (friction < 0.05) {
+            friction = 0.05;
+        }
+        this.minecraft.physicsContacts.ballGround.friction = friction;
     }
 }
