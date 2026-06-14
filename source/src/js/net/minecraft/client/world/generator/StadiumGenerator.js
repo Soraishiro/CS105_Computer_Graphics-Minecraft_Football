@@ -92,6 +92,7 @@ export default class StadiumGenerator {
                 // Goals and corner flags always check their own coordinate guards
                 this._generateGoals(chunk, lx, wx, lz, wz);
                 this._generateCornerFlags(chunk, lx, wx, lz, wz);
+                this._generateLightPoles(chunk, lx, wx, lz, wz);
             }
         }
 
@@ -475,6 +476,37 @@ export default class StadiumGenerator {
                 chunk.setBlockAt(lx, this.seaLevel + 2, lz, BlockRegistry.CORNER_FLAG.getId());
                 // Red triangular-like flag at the top
                 chunk.setBlockAt(lx, this.seaLevel + 3, lz, BlockRegistry.FLAG_TOP.getId());
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Light Poles
+    // ---------------------------------------------------------------
+
+    _generateLightPoles(chunk, lx, wx, lz, wz) {
+        // 4 corner positions for light poles (on the outer edge of the highest tier)
+        let lightPositions = [
+            [49, 40],
+            [49, -40],
+            [-49, 40],
+            [-49, -40]
+        ];
+
+        for (let [cx, cz] of lightPositions) {
+            if (wx === cx && wz === cz) {
+                // Column of structural blocks from ground (seaLevel + 1) to seaLevel + 14
+                let poleTop = this.seaLevel + 15;
+                for (let y = this.seaLevel + 1; y < poleTop; y++) {
+                    chunk.setBlockAt(lx, y, lz, BlockRegistry.STONE.getId());
+                }
+                // Light block at the top
+                chunk.setBlockAt(lx, poleTop, lz, BlockRegistry.REDSTONE_LAMP_ON.getId());
+
+                if (this.world && this.world.minecraft && this.world.minecraft.worldRenderer) {
+                    // Hướng ánh sáng về trung tâm mặt sân, tọa độ (0, seaLevel, 0)
+                    this.world.minecraft.worldRenderer.addSpotLight(wx, poleTop, wz, 0, this.seaLevel, 0);
+                }
             }
         }
     }

@@ -1294,7 +1294,7 @@ export default class WorldRenderer {
     }
   }
 
-  addSpotLight(x, y, z) {
+  addSpotLight(x, y, z, targetX, targetY, targetZ) {
     let key = `${x},${y},${z}`;
     if (this.spotLights.has(key)) return;
 
@@ -1315,16 +1315,20 @@ export default class WorldRenderer {
 
     let targetObj = new THREE.Object3D();
 
-    // Hướng về mặt người chơi lúc đặt block
-    let player = this.minecraft.player;
-    if (player) {
-      targetObj.position.set(
-        player.x,
-        player.y + player.getEyeHeight(),
-        player.z,
-      );
+    if (targetX !== undefined && targetY !== undefined && targetZ !== undefined) {
+      targetObj.position.set(targetX, targetY, targetZ);
     } else {
-      targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+      // Hướng về mặt người chơi lúc đặt block
+      let player = this.minecraft.player;
+      if (player) {
+        targetObj.position.set(
+          player.x,
+          player.y + player.getEyeHeight(),
+          player.z,
+        );
+      } else {
+        targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+      }
     }
 
     spotLight.target = targetObj;
