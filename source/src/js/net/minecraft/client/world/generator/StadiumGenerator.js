@@ -17,29 +17,29 @@ export default class StadiumGenerator {
 
     constructor(world, seed) {
         this.world = world;
-        this.seed  = seed;
+        this.seed = seed;
 
         // --- Pitch dimensions (50% of FIFA standard) ---
         this.halfLength = 30;
-        this.halfWidth  = 21;
+        this.halfWidth = 21;
 
         // --- Goal dimensions ---
         this.goalHalfWidth = 4;
-        this.goalHeight    = 3; // Reduced to 3 blocks
-        this.goalDepth     = 3;
+        this.goalHeight = 3; // Reduced to 3 blocks
+        this.goalDepth = 3;
 
         // --- Stands settings ---
-        this.STAND_MARGIN  = 9;
-        this.STAND_TIERS   = 6;
-        this.STAND_SLOPE   = 2;
-        this.STAND_AISLES  = 5;
+        this.STAND_MARGIN = 9;
+        this.STAND_TIERS = 6;
+        this.STAND_SLOPE = 2;
+        this.STAND_AISLES = 5;
 
         this.seaLevel = 64;
 
         // Stadium footprint half-extents: how far from origin the outer wall reaches.
         // Chunks fully outside this boundary get lightweight procedural terrain.
         this._footprintHalfX = this.halfLength + this.STAND_MARGIN + this.STAND_TIERS * this.STAND_SLOPE + 3;
-        this._footprintHalfZ = this.halfWidth  + this.STAND_MARGIN + this.STAND_TIERS * this.STAND_SLOPE + 3;
+        this._footprintHalfZ = this.halfWidth + this.STAND_MARGIN + this.STAND_TIERS * this.STAND_SLOPE + 3;
 
         // Single-layer Perlin noise for outside terrain height.
         // One NoiseGeneratorPerlin is cheap: just 256-entry permutation array.
@@ -138,7 +138,7 @@ export default class StadiumGenerator {
             } else {
                 // Alternating grass stripes every 5 blocks along X
                 let stripe = Math.floor(Math.abs(wx) / 5) % 2;
-                let block  = stripe === 0 ? BlockRegistry.TURF_DARK : BlockRegistry.TURF_LIGHT;
+                let block = stripe === 0 ? BlockRegistry.TURF_DARK : BlockRegistry.TURF_LIGHT;
                 chunk.setBlockAt(lx, sl, lz, block.getId());
             }
 
@@ -166,7 +166,7 @@ export default class StadiumGenerator {
         let totalMargin = this.STAND_MARGIN + this.STAND_TIERS * this.STAND_SLOPE + 2;
         return (
             Math.abs(x) <= this.halfLength + totalMargin &&
-            Math.abs(z) <= this.halfWidth  + totalMargin
+            Math.abs(z) <= this.halfWidth + totalMargin
         );
     }
 
@@ -179,7 +179,7 @@ export default class StadiumGenerator {
 
         // Outer boundary lines
         if (Math.abs(Math.abs(x) - this.halfLength) < E) return true;
-        if (Math.abs(Math.abs(z) - this.halfWidth)  < E) return true;
+        if (Math.abs(Math.abs(z) - this.halfWidth) < E) return true;
 
         // Centre line (x = 0)
         if (Math.abs(x) < E) return true;
@@ -248,13 +248,13 @@ export default class StadiumGenerator {
         let tier = Math.floor(standDist / this.STAND_SLOPE); // which tier row
         if (tier >= this.STAND_TIERS) return;
 
-        let sl      = this.seaLevel;
-        let height  = tier + 1; // tiers 0..5 → height 1..6
+        let sl = this.seaLevel;
+        let height = tier + 1; // tiers 0..5 → height 1..6
 
         // Determine which stand face this column belongs to
         let dX = Math.abs(wx) - this.halfLength;
         let dZ = Math.abs(wz) - this.halfWidth;
-        
+
         // --- Corner gaps ---
         // Giữa các góc sân không làm liền mạch mà tạo khoảng hở (diagonal gap)
         if (Math.abs(dX - dZ) <= 1) return; // 3-block wide diagonal gap at corners
@@ -354,7 +354,7 @@ export default class StadiumGenerator {
      * Integrated into the stands on the -Z sideline.
      */
     _generateTunnelGate(chunk, lx, wx, lz, wz) {
-        if (wz >= -23 || wz < -35) return; // From -24 to -35
+        if (wz > -23 || wz < -35) return; // From -23 to -35
         if (wz >= 0) return; // Double check -Z side
         if (Math.abs(wx) > 5) return; // Width up to ±5 for roof overhang
 
@@ -363,17 +363,17 @@ export default class StadiumGenerator {
         let isBack = (wz === -35 && Math.abs(wx) <= 4);
         let isRoof = (Math.abs(wx) <= 5);
 
-        // White concrete walls
-        if (isWall || isBack) {
+        // White concrete walls (chỉ trong phần tunnel, không phải mép ra sân)
+        if ((isWall || isBack) && wz < -23) {
             for (let y = 1; y <= 4; y++) {
                 chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.PITCH_LINE.getId());
             }
         }
 
-        // Roof at y=5
-        if (isRoof) {
+        // Roof at y=5 (chỉ trong phần tunnel)
+        if (isRoof && wz < -23) {
             chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.PITCH_LINE.getId());
-            
+
             // Fences on the roof edges
             let isRoofEdge = (Math.abs(wx) === 5 || wz === -24 || wz === -35);
             if (isRoofEdge) {
@@ -384,6 +384,11 @@ export default class StadiumGenerator {
         // Dark floor inside tunnel
         if (Math.abs(wx) < 3) {
             chunk.setBlockAt(lx, sl, lz, BlockRegistry.CONCRETE_DARK.getId());
+
+            // Khối kính làm bệ đỡ cúp ở chính giữa lối ra tunnel
+            if (wx === 0 && wz === -23) {
+                chunk.setBlockAt(lx, sl + 1, lz, BlockRegistry.GLASS.getId());
+            }
         }
     }
 
@@ -404,10 +409,10 @@ export default class StadiumGenerator {
      * @param {number} dir        - direction the net extends behind the goal (+1 or -1)
      */
     _buildGoalAt(chunk, lx, wx, lz, wz, goalLineX, dir) {
-        let sl   = this.seaLevel;
-        let hw   = this.goalHalfWidth; // ±4 z
-        let h    = this.goalHeight;    // 3 blocks tall
-        let dep  = this.goalDepth;     // 3 blocks net depth
+        let sl = this.seaLevel;
+        let hw = this.goalHalfWidth; // ±4 z
+        let h = this.goalHeight;    // 3 blocks tall
+        let dep = this.goalDepth;     // 3 blocks net depth
         let netBlock = BlockRegistry.GOAL_NET.getId(); // Custom Goal Net texture
 
         // Determine if wx is inside the goal depth

@@ -18,6 +18,7 @@ export default class GameSettings {
         this.viewDistance = 8;
         this.debugOverlay = false;
         this.serverAddress = 'server.labystudio.de';
+        this.soundtrack = true;
 
         // Lighting settings
         this.enableDayNightLighting = true;
@@ -29,9 +30,12 @@ export default class GameSettings {
         this.showSunLightHelper = false;
         this.torchCastShadow = false;
         this.sunCastShadow = false;
+        this.moonIntensity = 0.4;
+        this.moonCastShadow = false;
+        this.showMoonLightHelper = false;
         this.spotLightIntensity = 5;
         this.spotLightDistance = 100;
-        this.spotLightAngle = 30; // degrees, convert to rad where needed
+        this.spotLightAngle = 30; // degrees
         this.spotLightCastShadow = false;
         this.showSpotLightHelper = false;
     }

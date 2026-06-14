@@ -71,6 +71,25 @@ export default class PlayerEntity extends EntityLiving {
     }
 
     onUpdate() {
+        if (this.isSpectator) {
+            // Dynamic high-performance bypass for static stadium spectators
+            this.ticksExisted++;
+            this.prevX = this.x;
+            this.prevY = this.y;
+            this.prevZ = this.z;
+            
+            this.prevRotationYaw = this.rotationYaw;
+            this.prevRotationPitch = this.rotationPitch;
+            
+            // Keep body and head yaws perfectly aligned with the seat orientation (facing the pitch)
+            this.prevRenderYawOffset = this.renderYawOffset = this.rotationYaw;
+            this.prevRotationYawHead = this.rotationYawHead = this.rotationYaw;
+            
+            // Keep arm swing updated for slight idle breathing micro-animations
+            this.prevSwingProgress = this.swingProgress;
+            this.updateArmSwingProgress();
+            return;
+        }
         super.onUpdate();
 
         if (this !== this.minecraft.player && this.lookAtBall) {

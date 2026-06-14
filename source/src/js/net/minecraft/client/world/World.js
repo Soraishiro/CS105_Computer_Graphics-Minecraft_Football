@@ -30,6 +30,7 @@ export default class World {
     this.rainStrength = 0.0;
     this.nextRainAt = 23000; // first rain at 5 AM — reachable via day-1 slider (0–24000)
     this.rainEndsAt = 26000; // lasts 3000 ticks
+    this.lightningFlash = 0;
 
     // Update lights async
     let scope = this;
@@ -70,6 +71,16 @@ export default class World {
       this.isRaining = false;
     }
 
+    // Xử lý sấm chớp (0.5% chance mỗi lần update khi mưa to)
+    if (this.isRaining && this.rainStrength > 0.5) {
+      if (Math.random() < 0.005) {
+        this.lightningFlash = 2; // Kéo dài 2 update cycles
+      }
+    }
+    if (this.lightningFlash > 0) {
+      this.lightningFlash--;
+    }
+
     // Cập nhật rainStrength mượt mà
     let prevRainStrength = this.rainStrength;
     if (this.isRaining) {
@@ -98,21 +109,29 @@ export default class World {
     this.time += 2;
   }
 
-  setTime(newTime) {
-    this.time = newTime;
+  setTime(timeOfDay) {
+    // Giữ nguyên ngày hiện tại, chỉ đổi giờ
+    let currentDayCount = Math.floor(this.time / 24000);
+    let newAbsoluteTime = currentDayCount * 24000 + timeOfDay;
+    this.time = newAbsoluteTime;
     this._resyncRainSchedule();
   }
 
   _resyncRainSchedule() {
-    const inWindow =
-      this.time >= this.nextRainAt && this.time < this.rainEndsAt;
+    let inWindow = this.time >= this.nextRainAt && this.time < this.rainEndsAt;
+    
+    // Kéo dài mưa nếu nhảy thời gian ra ngoài khung mưa đang có
     if (this.isRaining && !inWindow) {
-      this.isRaining = false;
+      if (this.time < this.nextRainAt) {
+          this.nextRainAt = this.time; // Kéo dãn về quá khứ
+      } else if (this.time >= this.rainEndsAt) {
+          this.rainEndsAt = this.time + 2000; // Kéo dãn vào tương lai
+      }
+      inWindow = true; // Đã kéo dài nên luôn thỏa mãn
     } else if (!this.isRaining && inWindow) {
       this.isRaining = true;
     }
-    // No rescheduling here — only onTick() generates new rain windows.
-    // Snap rainStrength immediately so slider feedback is instant.
+
     this.rainStrength = this.isRaining ? 1.0 : 0.0;
   }
 
@@ -727,6 +746,49 @@ export default class World {
     }
     this.spawn.y = this.getHeightAt(this.spawn.x, this.spawn.z) + 8;
   }
+
+  loadSpawnChunksAsync(onProgress, onComplete) {
+    let viewDistance = this.minecraft.settings.viewDistance;
+    let chunksToLoad = [];
+    let spawnChunkX = this.spawn.x >> 4;
+    let spawnChunkZ = this.spawn.z >> 4;
+
+    for (let x = -viewDistance; x <= viewDistance; x++) {
+      for (let z = -viewDistance; z <= viewDistance; z++) {
+        chunksToLoad.push({ x: spawnChunkX + x, z: spawnChunkZ + z });
+      }
+    }
+
+    let totalChunks = chunksToLoad.length;
+    let loadedChunks = 0;
+
+    let nextBatch = () => {
+      let startTime = performance.now();
+      // Time budget: 12ms per frame to guarantee a smooth 60fps safety margin
+      while (chunksToLoad.length > 0 && (performance.now() - startTime) < 12) {
+        let chunkCoord = chunksToLoad.shift();
+        this.getChunkAt(chunkCoord.x, chunkCoord.z);
+        loadedChunks++;
+      }
+
+      let progress = totalChunks > 0 ? loadedChunks / totalChunks : 1.0;
+      if (onProgress) {
+        onProgress(progress);
+      }
+
+      if (chunksToLoad.length > 0) {
+        setTimeout(nextBatch, 0);
+      } else {
+        this.spawn.y = this.getHeightAt(this.spawn.x, this.spawn.z) + 8;
+        if (onComplete) {
+          onComplete();
+        }
+      }
+    };
+
+    setTimeout(nextBatch, 0);
+  }
+
 
   getChunkProvider() {
     return this.chunkProvider;

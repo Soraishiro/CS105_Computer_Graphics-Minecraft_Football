@@ -180,83 +180,126 @@ export default class Minecraft {
       this.player.username = this.session.getProfile().getUsername();
       this.world.addEntity(this.player);
 
-      this.world.loadSpawnChunks();
-      this.player.respawn();
+      // --- Setup Stadium Spectators Pre-calculation ---
+      // Plain mob type names matching local vanilla textures in src/resources/mob/
+      const MOB_NAMES = [
+        "cow", "pig", "sheep", "chicken", "wolf", "ocelot",
+        "villager", "creeper", "enderman", "zombie", "skeleton",
+        "squid", "slime", "magmacube"
+      ];
 
-      // Face toward the pitch (+Z direction) from inside the tunnel.
-      // rotationYaw=180 maps to look-vector z = cos(-180°*π/180 - π) = cos(0) = +1.
-      this.player.rotationYaw = 180;
-      this.player.prevRotationYaw = 180;
+      // Stadium geometry constants
+      let sl = 64;          // base Y of stadium surface
+      let halfLength = 30;  // half-length along X (goal sides)
+      let halfWidth = 21;   // half-width along Z (side stands)
+      let STAND_MARGIN = 9;
+      let STAND_TIERS = 6;
+      let STAND_SLOPE = 2;
 
-      // Spawn football
-      let ball = new BallEntity(this, this.world, 100); // ID 100 for ball
-      ball.setPosition(0, 70, 0);
-      this.world.addEntity(ball);
+      // Scan ONLY the north stand (wz > 0, opposite the tunnel which is at wz < 0)
+      // North stand: dZ is the dominant direction, not a goal side.
+      let seatPositions = [];
+      for (let wx = -50; wx <= 50; wx++) {
+        for (let wz = halfWidth + STAND_MARGIN; wz <= 41; wz++) {
+          let dX = Math.abs(wx) - halfLength;
+          let dZ = wz - halfWidth; // always positive (north side only)
 
-      // Spawn substitutions — first 3 = Barcelona (left), next 3 = Real Madrid (right)
-      for (let i = 0; i < 6; i++) {
-        let sub = new PlayerEntity(this, this.world, 200 + i);
-        sub.username = "Sub " + (i + 1);
-        sub.lookAtBall = true;
-        let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
-        let z = -20; // Standing near the tunnel
-        sub.setPosition(x, this.world.getHeightAt(x, z), z);
-        sub.rotationYaw = 0; // facing the pitch (+Z)
-        if (i < 3) {
-          sub.isBarcelona = true;
-        } else {
-          sub.isRealMadrid = true;
+          // This must be the side stand (dZ dominant), not goal-side corner
+          if (dX >= dZ - 1) continue; // skip corner/goal-side overlap
+
+          let dist = dZ;
+          let standDist = dist - STAND_MARGIN;
+          if (standDist < 0) continue;
+
+          let tier = Math.floor(standDist / STAND_SLOPE);
+          if (tier >= STAND_TIERS - 1) continue; // exclude top border row
+
+          let height = tier + 1;
+
+          // Exclude walkway aisles along X
+          let span = halfLength * 2;
+          let step = Math.floor(span / 4);
+          let relX = wx + halfLength;
+          let isAisle = (relX > 0) && (relX < span) && (relX % step === 0);
+          if (isAisle) continue;
+
+          // Y+1: place entity on TOP of the seat block surface
+          seatPositions.push({ x: wx, y: sl + height + 1, z: wz });
         }
-        this.world.addEntity(sub);
       }
 
-      // Spawn referee in the middle of the pitch
-      let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
-      referee.username = "Referee";
-      referee.isReferee = true;
-      referee.lookAtBall = true;
-      let refY = this.world.getHeightAt(0, 0);
-      referee.setPosition(0, refY, 0);
-      referee.rotationYaw = 90; // face sideways
-      referee.prevRotationYaw = 90;
-      this.world.addEntity(referee);
+      // All mobs face south (toward pitch) — yaw 180 for north stand
+      const SPECTATOR_YAW = 180;
 
-      this.confettiDelayTicks = 40;
-    }
-  }
+      // Build spawn queue — fill all valid north-stand seats (cap 400 for WebGL perf)
+      const MAX_SPECTATORS = 400;
+      let selectedSeats = seatPositions.slice(0, MAX_SPECTATORS);
 
-  spawnConfettiAtTunnel() {
-    if (!this.world) {
-      return;
-    }
+      let spectatorsToSpawn = [];
+      for (let i = 0; i < selectedSeats.length; i++) {
+        let seat = selectedSeats[i];
+        let mobName = MOB_NAMES[i % MOB_NAMES.length]; // cycle through all types evenly
+        spectatorsToSpawn.push({
+          x: seat.x,
+          y: seat.y,
+          z: seat.z,
+          mobName: mobName,
+          yawAngle: SPECTATOR_YAW
+        });
+      }
 
-    const spawnZ = (this.world.spawn ? this.world.spawn.z : -25) + 1;
-    const leftX = -3.5;
-    const rightX = 3.5;
-    const burstCount = 90;
+      this.spectatorsToSpawnQueue = spectatorsToSpawn;
+      this.spectatorsSpawnedCount = 0;
 
-    this.spawnConfettiBurst(leftX, spawnZ, burstCount);
-    this.spawnConfettiBurst(rightX, spawnZ, burstCount);
-  }
+      this.world.loadSpawnChunksAsync(
+        (progress) => {
+          if (this.loadingScreen !== null) {
+            this.loadingScreen.setProgress(progress);
+          }
+        },
+        () => {
+          this.player.respawn();
 
-  spawnConfettiBurst(x, z, count) {
-    if (!this.world) {
-      return;
-    }
+          // Face toward the pitch (+Z direction) from inside the tunnel.
+          // rotationYaw=180 maps to look-vector z = cos(-180°*π/180 - π) = cos(0) = +1.
+          this.player.rotationYaw = 180;
+          this.player.prevRotationYaw = 180;
 
-    let baseY = this.world.getHeightAt(x, z) + 2;
-    for (let i = 0; i < count; i++) {
-      let offsetX = (Math.random() - 0.5) * 1.5;
-      let offsetY = Math.random() * 1.5;
-      let offsetZ = (Math.random() - 0.5) * 1.5;
-      this.particleRenderer.spawnParticle(
-        new ParticleConfetti(
-          this,
-          this.world,
-          x + offsetX,
-          baseY + offsetY,
-          z + offsetZ
-        )
+          // Spawn football
+          let ball = new BallEntity(this, this.world, 100); // ID 100 for ball
+          ball.setPosition(0, 70, 0);
+          this.world.addEntity(ball);
+
+          // Spawn substitutions — first 3 = Barcelona (left), next 3 = Real Madrid (right)
+          for (let i = 0; i < 6; i++) {
+            let sub = new PlayerEntity(this, this.world, 200 + i);
+            sub.username = "Sub " + (i + 1);
+            let x = (i < 3) ? -4.5 - (i * 1.5) : 4.5 + ((i - 3) * 1.5);
+            let z = -20; // Standing near the tunnel
+            sub.setPosition(x, this.world.getHeightAt(x, z), z);
+            sub.rotationYaw = 0; // facing the pitch (+Z)
+            if (i < 3) {
+              sub.isBarcelona = true;
+            } else {
+              sub.isRealMadrid = true;
+            }
+            this.world.addEntity(sub);
+          }
+
+          // Spawn referee in the middle of the pitch
+          let referee = new PlayerEntity(this, this.world, 300); // ID 300 for referee
+          referee.username = "Referee";
+          referee.isReferee = true;
+          let refY = this.world.getHeightAt(0, 0);
+          referee.setPosition(0, refY, 0);
+          referee.rotationYaw = 90; // face sideways
+          referee.prevRotationYaw = 90;
+          this.world.addEntity(referee);
+
+          // Focus game and dismiss loading screen
+          this.displayScreen(null);
+          this.loadingScreen = null;
+        }
       );
     }
   }
@@ -393,11 +436,26 @@ export default class Minecraft {
       // Tick particle renderer
       this.particleRenderer.onTick();
 
-      if (this.confettiDelayTicks > 0) {
-        this.confettiDelayTicks--;
-        if (this.confettiDelayTicks === 0) {
-          this.spawnConfettiAtTunnel();
-          this.confettiDelayTicks = -1;
+      // Progressive Background Spawning (Option C: Arriving Crowd Effect)
+      if (this.spectatorsToSpawnQueue && this.spectatorsToSpawnQueue.length > 0) {
+        let spawnBatchSize = 2; // spawn 2 spectators per tick (40 spectators per second)
+        for (let i = 0; i < spawnBatchSize && this.spectatorsToSpawnQueue.length > 0; i++) {
+          let spec = this.spectatorsToSpawnQueue.shift();
+          let spectator = new PlayerEntity(this, this.world, 400 + this.spectatorsSpawnedCount);
+          spectator.username = spec.mobName;
+          spectator.isSpectator = true;
+
+          // Place precisely on top of the concrete seat block
+          spectator.setPosition(spec.x, spec.y, spec.z);
+
+          // Orient the spectator to face the pitch orthogonally
+          spectator.rotationYaw = spec.yawAngle;
+          spectator.prevRotationYaw = spec.yawAngle;
+          spectator.rotationYawHead = spec.yawAngle;
+          spectator.prevRotationYawHead = spec.yawAngle;
+
+          this.world.addEntity(spectator);
+          this.spectatorsSpawnedCount++;
         }
       }
     }

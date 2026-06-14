@@ -143,6 +143,7 @@ class Start {
       '2025_04_12_italian-referee-23186559.png',
       '2026_03_01_messi-2018--remake--23896589.png',
       '2025_11_29_real-madrid-number-7-23682272.png',
+      'trophy.png',
       'gui/title/minecraft.png',
       'gui/title/background/panorama_0.png',
       'gui/title/background/panorama_1.png',
@@ -154,6 +155,21 @@ class Start {
       'entity/football.png',
       'entity/football_2.png',
       'entity/football_bump.png',
+      // Vanilla mob textures for stadium spectators
+      'mob/cow/cow.png',
+      'mob/pig/pig.png',
+      'mob/sheep/sheep.png',
+      'mob/chicken.png',
+      'mob/wolf/wolf.png',
+      'mob/ocelot.png',
+      'mob/creeper/creeper.png',
+      'mob/skeleton/skeleton.png',
+      'mob/zombie/zombie.png',
+      'mob/enderman/enderman.png',
+      'mob/villager/villager.png',
+      'mob/slime/slime.png',
+      'mob/magmacube.png',
+      'mob/squid.png',
     ]).then((resources) => {
       return this.buildStadiumAtlas(resources);
     }).then((resources) => {

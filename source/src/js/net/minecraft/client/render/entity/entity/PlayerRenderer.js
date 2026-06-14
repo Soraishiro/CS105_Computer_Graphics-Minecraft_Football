@@ -1,3 +1,4 @@
+import ModelMob from "../../model/model/ModelMob.js";
 import ModelPlayer from "../../model/model/ModelPlayer.js?v=4";
 import EntityRenderer from "../EntityRenderer.js";
 import Block from "../../../world/block/Block.js";
@@ -42,6 +43,40 @@ export default class PlayerRenderer extends EntityRenderer {
         this.handModel = null;
         this.firstPersonGroup = new THREE.Object3D();
         this.worldRenderer.overlay.add(this.firstPersonGroup);
+
+        // Spectator mob textures cache
+        this.spectatorTextures = {};
+    }
+
+    loadTextureFromUrl(url, fallbackTexture) {
+        let texture = new THREE.Texture();
+        let image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => {
+            let canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            let ctx = canvas.getContext('2d');
+            
+            // Draw original skin image
+            ctx.drawImage(image, 0, 0);
+            
+            texture.image = canvas;
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            texture.needsUpdate = true;
+        };
+        image.onerror = () => {
+            // Explicit offline & download fallback
+            if (fallbackTexture && fallbackTexture.image) {
+                texture.image = fallbackTexture.image;
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                texture.needsUpdate = true;
+            }
+        };
+        image.src = url;
+        return texture;
     }
 
     rebuild(entity) {
@@ -67,33 +102,94 @@ export default class PlayerRenderer extends EntityRenderer {
             mesh.material = mesh.material.clone();
             mesh.material.depthTest = false;
         } else {
-            if (entity.isReferee && this.textureReferee) {
+            if (entity.isSpectator) {
+                let mobName = entity.username; // now plain: "cow", "pig", "creeper", etc.
+                if (!(mobName in this.spectatorTextures)) {
+                    // Local vanilla mob texture paths (extracted from Minecraft 1.8 JAR)
+                    const MOB_TEXTURE_PATHS = {
+                        "cow":       "mob/cow/cow.png",
+                        "pig":       "mob/pig/pig.png",
+                        "sheep":     "mob/sheep/sheep.png",
+                        "chicken":   "mob/chicken.png",
+                        "wolf":      "mob/wolf/wolf.png",
+                        "ocelot":    "mob/ocelot.png",
+                        "creeper":   "mob/creeper/creeper.png",
+                        "skeleton":  "mob/skeleton/skeleton.png",
+                        "zombie":    "mob/zombie/zombie.png",
+                        "enderman":  "mob/enderman/enderman.png",
+                        "villager":  "mob/villager/villager.png",
+                        "slime":     "mob/slime/slime.png",
+                        "magmacube": "mob/magmacube.png",
+                        "squid":     "mob/squid.png",
+                    };
+                    let texPath = MOB_TEXTURE_PATHS[mobName];
+                    let tex = texPath ? this.worldRenderer.minecraft.getThreeTexture(texPath) : null;
+                    if (tex) {
+                        tex.magFilter = THREE.NearestFilter;
+                        tex.minFilter = THREE.NearestFilter;
+                        this.spectatorTextures[mobName] = tex;
+                    } else {
+                        this.spectatorTextures[mobName] = this.textureCharacter; // fallback
+                    }
+                }
+                this.tessellator.bindTexture(this.spectatorTextures[mobName]);
+
+                // Swap to proper custom mob model
+                const customMobs = ["cow", "pig", "sheep", "chicken", "wolf", "ocelot",
+                    "villager", "creeper", "enderman", "squid", "slime", "magmacube",
+                    "skeleton", "zombie"];
+                if (customMobs.includes(mobName)) {
+                    if (!(this.model instanceof ModelMob) || this.model.mobType !== mobName) {
+                        this.model = new ModelMob(mobName);
+                    }
+                } else {
+                    if (!(this.model instanceof ModelPlayer)) {
+                        this.model = new ModelPlayer();
+                    }
+                }
+            } else if (entity.isReferee && this.textureReferee) {
                 this.tessellator.bindTexture(this.textureReferee);
+                if (!(this.model instanceof ModelPlayer)) {
+                    this.model = new ModelPlayer();
+                }
             } else if (entity.isBarcelona && this.textureBarcelona) {
                 this.tessellator.bindTexture(this.textureBarcelona);
+                if (!(this.model instanceof ModelPlayer)) {
+                    this.model = new ModelPlayer();
+                }
             } else if (entity.isRealMadrid && this.textureRealMadrid) {
                 this.tessellator.bindTexture(this.textureRealMadrid);
+                if (!(this.model instanceof ModelPlayer)) {
+                    this.model = new ModelPlayer();
+                }
             } else {
                 this.tessellator.bindTexture(this.textureCharacter);
+                if (!(this.model instanceof ModelPlayer)) {
+                    this.model = new ModelPlayer();
+                }
             }
             super.rebuild(entity);
 
             // Render item in hand in third person
-            if (hasItem) {
+            if (hasItem && this.model.rightArm) {
                 let block = Block.getById(itemId);
                 let group = this.model.rightArm.bone;
                 this.worldRenderer.blockRenderer.renderBlockInHandThirdPerson(group, block, entity.getEntityBrightness());
             }
 
-            // Create first person right hand and attach it to the holder
-            this.firstPersonGroup.clear();
-            this.handModel = this.model.rightArm.clone();
-            this.firstPersonGroup.add(this.handModel.bone);
+            if (isSelf && this.model.rightArm) {
+                // Create first person right hand and attach it to the holder
+                this.firstPersonGroup.clear();
+                this.handModel = this.model.rightArm.clone();
+                this.firstPersonGroup.add(this.handModel.bone);
 
-            // Copy material and update depth test of the hand to render it always in front
-            let mesh = this.handModel.bone.children[0];
-            mesh.material = mesh.material.clone();
-            mesh.material.depthTest = false;
+                // Copy material and update depth test of the hand to render it always in front
+                let mesh = this.handModel.bone.children[0];
+                if (mesh) {
+                    mesh.material = mesh.material.clone();
+                    mesh.material.depthTest = false;
+                }
+            }
         }
     }
 
@@ -130,10 +226,12 @@ export default class PlayerRenderer extends EntityRenderer {
         this.model.hasItemInHand = false;
         this.model.isSneaking = false;
         this.model.setRotationAngles(player, 0, 0, 0, 0, 0, 0);
-        this.handModel.copyTransformOf(this.model.rightArm);
+        if (this.handModel && this.model.rightArm) {
+            this.handModel.copyTransformOf(this.model.rightArm);
 
-        // Render hand model
-        this.handModel.render();
+            // Render hand model
+            this.handModel.render();
+        }
     }
 
     fillMeta(entity, meta) {
