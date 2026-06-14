@@ -9,6 +9,7 @@ import Vector3 from "../../util/Vector3.js";
 import * as THREE from "../../../../../../libraries/three.module.js";
 import GUI from "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm";
 import ParticleRainSplash from "./particle/particle/ParticleRainSplash.js";
+import ModelPlayer from "./model/model/ModelPlayer.js";
 
 export default class WorldRenderer {
   static THIRD_PERSON_DISTANCE = 4;
@@ -189,7 +190,145 @@ export default class WorldRenderer {
     this.weatherGroup.matrixAutoUpdate = false;
     this.scene.add(this.weatherGroup);
 
+    this.setupTrophy();
+    this.setupDatGUI();
+
     this.rendererUpdateCount = 0;
+  }
+
+  setupTrophy() {
+    this.trophy = new THREE.Group();
+
+    // Material vàng bóng cho phần cúp
+    let goldMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffd700, // Màu vàng Gold
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+
+    // Material gỗ/nhựa đen cho phần đế
+    let baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      roughness: 0.9,
+    });
+
+    // 1. Đế cúp (Base)
+    let baseGeom = new THREE.BoxGeometry(6, 2, 6);
+    let base = new THREE.Mesh(baseGeom, baseMaterial);
+    base.position.set(0, 1, 0);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    this.trophy.add(base);
+
+    // 2. Chân cúp (Stem)
+    let stemGeom = new THREE.CylinderGeometry(0.8, 2, 5, 32);
+    let stem = new THREE.Mesh(stemGeom, goldMaterial);
+    stem.position.set(0, 4.5, 0);
+    stem.castShadow = true;
+    stem.receiveShadow = true;
+    this.trophy.add(stem);
+
+    // 3. Đáy thân cúp (Bowl bottom)
+    let bowlBottomGeom = new THREE.CylinderGeometry(3, 0.8, 2, 32);
+    let bowlBottom = new THREE.Mesh(bowlBottomGeom, goldMaterial);
+    bowlBottom.position.set(0, 8, 0);
+    bowlBottom.castShadow = true;
+    bowlBottom.receiveShadow = true;
+    this.trophy.add(bowlBottom);
+
+    // 4. Thân cúp chính (Bowl top)
+    let bowlTopGeom = new THREE.CylinderGeometry(4, 3, 4, 32);
+    let bowlTop = new THREE.Mesh(bowlTopGeom, goldMaterial);
+    bowlTop.position.set(0, 11, 0);
+    bowlTop.castShadow = true;
+    bowlTop.receiveShadow = true;
+    this.trophy.add(bowlTop);
+
+    // 5. Quai cúp bên trái (Left Handle)
+    let handleGeom = new THREE.TorusGeometry(2.5, 0.4, 16, 32);
+    let leftHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    leftHandle.position.set(-4, 10, 0);
+    leftHandle.rotation.set(0, 0, Math.PI / 8);
+    leftHandle.castShadow = true;
+    leftHandle.receiveShadow = true;
+    this.trophy.add(leftHandle);
+
+    // 6. Quai cúp bên phải (Right Handle)
+    let rightHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    rightHandle.position.set(4, 10, 0);
+    rightHandle.rotation.set(0, 0, -Math.PI / 8);
+    rightHandle.castShadow = true;
+    rightHandle.receiveShadow = true;
+    this.trophy.add(rightHandle);
+
+    // Scale cho vừa vặn
+    this.trophy.scale.set(0.1, 0.1, 0.1);
+
+    this.trophy.position.set(0.5, 66, -22.5);
+    this.scene.add(this.trophy);
+  }
+
+  setupDatGUI() {
+    this.gui = new GUI();
+    this.gui.name = "Trophy Controller";
+
+    this.gui.domElement.style.position = 'absolute';
+    this.gui.domElement.style.left = '0px';
+    this.gui.domElement.style.top = '0px';
+    this.gui.domElement.style.right = 'auto';
+
+    this.trophyParams = {
+      tx: 0.5, ty: 66, tz: -22.5,
+      rx: 0, ry: 0, rz: 0,
+      sx: 0.1, sy: 0.1, sz: 0.1
+    };
+
+    const updateTransform = () => {
+      this.trophy.position.set(this.trophyParams.tx, this.trophyParams.ty, this.trophyParams.tz);
+      this.trophy.rotation.set(
+        THREE.MathUtils.degToRad(this.trophyParams.rx),
+        THREE.MathUtils.degToRad(this.trophyParams.ry),
+        THREE.MathUtils.degToRad(this.trophyParams.rz)
+      );
+      this.trophy.scale.set(this.trophyParams.sx, this.trophyParams.sy, this.trophyParams.sz);
+    };
+
+    this.guiControllers = [];
+
+    let fTranslate = this.gui.addFolder('Translate (Tịnh tiến)');
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'tx', -50, 50).name('X').onChange(updateTransform));
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'ty', 0, 100).name('Y').onChange(updateTransform));
+    this.guiControllers.push(fTranslate.add(this.trophyParams, 'tz', -50, 50).name('Z').onChange(updateTransform));
+    fTranslate.close();
+
+    let fRotate = this.gui.addFolder('Rotate (Quay)');
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'rx', 0, 360).name('X (Độ)').onChange(updateTransform));
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'ry', 0, 360).name('Y (Độ)').onChange(updateTransform));
+    this.guiControllers.push(fRotate.add(this.trophyParams, 'rz', 0, 360).name('Z (Độ)').onChange(updateTransform));
+    fRotate.close();
+
+    let fScale = this.gui.addFolder('Scale (Tỉ lệ)');
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sx', 0.1, 5).name('X').onChange(updateTransform));
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sy', 0.1, 5).name('Y').onChange(updateTransform));
+    this.guiControllers.push(fScale.add(this.trophyParams, 'sz', 0.1, 5).name('Z').onChange(updateTransform));
+    fScale.close();
+
+    this.resetTrophyGUI = () => {
+      this.trophyParams.tx = 0.5;
+      this.trophyParams.ty = 66;
+      this.trophyParams.tz = -22.5;
+      this.trophyParams.rx = 0;
+      this.trophyParams.ry = 0;
+      this.trophyParams.rz = 0;
+      this.trophyParams.sx = 0.1;
+      this.trophyParams.sy = 0.1;
+      this.trophyParams.sz = 0.1;
+
+      updateTransform();
+      this.guiControllers.forEach(c => c.updateDisplay());
+    };
+
+    this.gui.close();
   }
 
   render(partialTicks) {
@@ -869,11 +1008,11 @@ export default class WorldRenderer {
     this.chunkSectionUpdateQueue.sort((section1, section2) => {
       let distance1 = Math.floor(
         Math.pow(section1.x - cameraChunkX, 2) +
-          Math.pow(section1.z - cameraChunkZ, 2),
+        Math.pow(section1.z - cameraChunkZ, 2),
       );
       let distance2 = Math.floor(
         Math.pow(section2.x - cameraChunkX, 2) +
-          Math.pow(section2.z - cameraChunkZ, 2),
+        Math.pow(section2.z - cameraChunkZ, 2),
       );
       return distance1 - distance2;
     });
@@ -882,11 +1021,11 @@ export default class WorldRenderer {
     world.group.children.sort((a, b) => {
       let distance1 = Math.floor(
         Math.pow(a.chunkX - cameraChunkX, 2) +
-          Math.pow(a.chunkZ - cameraChunkZ, 2),
+        Math.pow(a.chunkZ - cameraChunkZ, 2),
       );
       let distance2 = Math.floor(
         Math.pow(b.chunkX - cameraChunkX, 2) +
-          Math.pow(b.chunkZ - cameraChunkZ, 2),
+        Math.pow(b.chunkZ - cameraChunkZ, 2),
       );
       return distance2 - distance1;
     });
@@ -1048,23 +1187,23 @@ export default class WorldRenderer {
         // Update position of hit box
         this.blockHitBox.position.set(
           x +
-            width / 2 / width -
-            0.5 +
-            boundingBox.maxX -
-            width / 2 +
-            offset / 2,
+          width / 2 / width -
+          0.5 +
+          boundingBox.maxX -
+          width / 2 +
+          offset / 2,
           y +
-            height / 2 / height -
-            0.5 +
-            boundingBox.maxY -
-            height / 2 +
-            offset / 2,
+          height / 2 / height -
+          0.5 +
+          boundingBox.maxY -
+          height / 2 +
+          offset / 2,
           z +
-            depth / 2 / depth -
-            0.5 +
-            boundingBox.maxZ -
-            depth / 2 +
-            offset / 2,
+          depth / 2 / depth -
+          0.5 +
+          boundingBox.maxZ -
+          depth / 2 +
+          offset / 2,
         );
       }
     }
@@ -1244,6 +1383,10 @@ export default class WorldRenderer {
 
     this.webRenderer.clear();
     this.overlay.clear();
+
+    if (this.resetTrophyGUI) {
+      this.resetTrophyGUI();
+    }
   }
 
   updateLightingFromSettings() {
@@ -1328,6 +1471,7 @@ export default class WorldRenderer {
     this.tessellator.startDrawing();
     this.tessellator.bindTexture(this.textureRain);
 
+    // Độ đục của hạt mưa phụ thuộc vào rainStrength
     this.tessellator.setColor(1, 1, 1, world.rainStrength * 0.45);
 
     let timeFactor = (this.rendererUpdateCount + partialTicks) * 0.35; // Tăng tốc độ rơi của mưa
@@ -1441,17 +1585,16 @@ export default class WorldRenderer {
 
         // Chỉ sinh trên các block lộ thiên và gần người chơi
         if (ry > 0 && ry >= py - 8 && ry <= py + 8) {
-          pr.spawnParticle(
-            new ParticleRainSplash(
-              this.minecraft,
-              world,
-              rx + Math.random(),
-              ry + 0.1,
-              rz + Math.random(),
-            ),
-          );
+          pr.spawnParticle(new ParticleRainSplash(
+            this.minecraft,
+            world,
+            rx + Math.random(),
+            ry + 0.1,
+            rz + Math.random()
+          ));
         }
       }
     }
   }
+
 }

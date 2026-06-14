@@ -143,6 +143,7 @@ class Start {
       '2025_04_12_italian-referee-23186559.png',
       '2026_03_01_messi-2018--remake--23896589.png',
       '2025_11_29_real-madrid-number-7-23682272.png',
+      'trophy.png',
       'gui/title/minecraft.png',
       'gui/title/background/panorama_0.png',
       'gui/title/background/panorama_1.png',
