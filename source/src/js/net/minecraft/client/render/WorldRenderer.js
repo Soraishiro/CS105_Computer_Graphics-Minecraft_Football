@@ -190,6 +190,7 @@ export default class WorldRenderer {
     this.scene.add(this.weatherGroup);
 
     this.rendererUpdateCount = 0;
+    this.setupTrophy();
   }
 
   render(partialTicks) {
@@ -667,10 +668,14 @@ export default class WorldRenderer {
             }
         }
 
-    if (this.spotLightHelper) {
-      this.spotLightHelper.light.target.updateMatrixWorld();
-      this.spotLightHelper.update();
-      this.spotLightHelper.updateMatrixWorld(true);
+    if (this.spotLights) {
+      this.spotLights.forEach((obj) => {
+        if (obj.target) obj.target.updateMatrixWorld();
+        if (obj.helper) {
+          obj.helper.update();
+          obj.helper.updateMatrixWorld(true);
+        }
+      });
     }
 
     // Chuyen brightness tu cos(angle): ban ngay = 1, ban dem = 0
@@ -1155,7 +1160,7 @@ export default class WorldRenderer {
     }
   }
 
-  addSpotLight(x, y, z) {
+  addSpotLight(x, y, z, targetX, targetY, targetZ) {
     let key = `${x},${y},${z}`;
     if (this.spotLights.has(key)) return;
 
@@ -1167,25 +1172,29 @@ export default class WorldRenderer {
       this.minecraft.settings.spotLightDistance,
     );
     spotLight.position.set(x + 0.5, y + 0.5, z + 0.5);
-        spotLight.angle = THREE.MathUtils.degToRad(this.minecraft.settings.spotLightAngle);
+    spotLight.angle = THREE.MathUtils.degToRad(this.minecraft.settings.spotLightAngle);
     spotLight.penumbra = 0.5;
     spotLight.castShadow = this.minecraft.settings.spotLightCastShadow;
-    spotLight.shadow.mapSize.width = 1024;
-    spotLight.shadow.mapSize.height = 1024;
+    spotLight.shadow.mapSize.width = 512;
+    spotLight.shadow.mapSize.height = 512;
     spotLight.shadow.bias = -0.0001;
 
     let targetObj = new THREE.Object3D();
 
-    // Hướng về mặt người chơi lúc đặt block
-    let player = this.minecraft.player;
-    if (player) {
-      targetObj.position.set(
-        player.x,
-        player.y + player.getEyeHeight(),
-        player.z,
-      );
+    if (targetX !== undefined && targetY !== undefined && targetZ !== undefined) {
+      targetObj.position.set(targetX, targetY, targetZ);
     } else {
-      targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+      // Hướng về mặt người chơi lúc đặt block
+      let player = this.minecraft.player;
+      if (player) {
+        targetObj.position.set(
+          player.x,
+          player.y + player.getEyeHeight(),
+          player.z,
+        );
+      } else {
+        targetObj.position.set(x + 0.5, y - 10, z + 0.5);
+      }
     }
 
     spotLight.target = targetObj;
@@ -1220,9 +1229,117 @@ export default class WorldRenderer {
     }
   }
 
+  setupStadiumLights() {
+    // Clear any existing spotlights to avoid duplicates/memory leaks
+    if (this.spotLights) {
+      this.spotLights.forEach((obj) => {
+        this.scene.remove(obj.light);
+        this.scene.remove(obj.target);
+        if (obj.helper) this.scene.remove(obj.helper);
+      });
+      this.spotLights.clear();
+    }
+
+    let world = this.minecraft.world;
+    if (!world) return;
+
+    let chunkProvider = world.getChunkProvider();
+    if (!chunkProvider || !chunkProvider.generator) return;
+
+    let lightPositions = chunkProvider.generator.lightPoles;
+    if (!lightPositions) return;
+
+    let poleTop = 64 + 15; // seaLevel + 15
+    let seaLevel = 64;
+
+    for (let [cx, cz] of lightPositions) {
+      // Check if the block at the top of the pole is REDSTONE_LAMP_ON (ID 116)
+      if (world.getBlockAt(cx, poleTop, cz) === 116) {
+        this.addSpotLight(cx, poleTop, cz, 0, seaLevel, 0);
+      }
+    }
+  }
+
+  setupTrophy() {
+    this.trophy = new THREE.Group();
+
+    // Material vàng bóng cho phần cúp
+    let goldMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffd700, // Màu vàng Gold
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+
+    // Material gỗ/nhựa đen cho phần đế
+    let baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      roughness: 0.9,
+    });
+
+    // 1. Đế cúp (Base)
+    let baseGeom = new THREE.BoxGeometry(6, 2, 6);
+    let base = new THREE.Mesh(baseGeom, baseMaterial);
+    base.position.set(0, 1, 0);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    this.trophy.add(base);
+
+    // 2. Chân cúp (Stem)
+    let stemGeom = new THREE.CylinderGeometry(0.8, 2, 5, 32);
+    let stem = new THREE.Mesh(stemGeom, goldMaterial);
+    stem.position.set(0, 4.5, 0);
+    stem.castShadow = true;
+    stem.receiveShadow = true;
+    this.trophy.add(stem);
+
+    // 3. Đáy thân cúp (Bowl bottom)
+    let bowlBottomGeom = new THREE.CylinderGeometry(3, 0.8, 2, 32);
+    let bowlBottom = new THREE.Mesh(bowlBottomGeom, goldMaterial);
+    bowlBottom.position.set(0, 8, 0);
+    bowlBottom.castShadow = true;
+    bowlBottom.receiveShadow = true;
+    this.trophy.add(bowlBottom);
+
+    // 4. Thân cúp chính (Bowl top)
+    let bowlTopGeom = new THREE.CylinderGeometry(4, 3, 4, 32);
+    let bowlTop = new THREE.Mesh(bowlTopGeom, goldMaterial);
+    bowlTop.position.set(0, 11, 0);
+    bowlTop.castShadow = true;
+    bowlTop.receiveShadow = true;
+    this.trophy.add(bowlTop);
+
+    // 5. Quai cúp bên trái (Left Handle)
+    let handleGeom = new THREE.TorusGeometry(2.5, 0.4, 16, 32);
+    let leftHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    leftHandle.position.set(-4, 10, 0);
+    leftHandle.rotation.set(0, 0, Math.PI / 8);
+    leftHandle.castShadow = true;
+    leftHandle.receiveShadow = true;
+    this.trophy.add(leftHandle);
+
+    // 6. Quai cúp bên phải (Right Handle)
+    let rightHandle = new THREE.Mesh(handleGeom, goldMaterial);
+    rightHandle.position.set(4, 10, 0);
+    rightHandle.rotation.set(0, 0, -Math.PI / 8);
+    rightHandle.castShadow = true;
+    rightHandle.receiveShadow = true;
+    this.trophy.add(rightHandle);
+
+    // Scale cho vừa vặn
+    this.trophy.scale.set(0.1, 0.1, 0.1);
+
+    // Vị trí nằm trên bệ kính (glass block) ở (0, 65, -23)
+    this.trophy.position.set(0.5, 66, -22.5);
+    this.scene.add(this.trophy);
+  }
+
   reset() {
     if (this.minecraft.world !== null) {
       this.scene.remove(this.minecraft.world.group);
+    }
+
+    if (this.trophy) {
+      this.scene.remove(this.trophy);
     }
 
     // Dọn dẹp toàn bộ đèn động (đuốc) khi thoát ra Title

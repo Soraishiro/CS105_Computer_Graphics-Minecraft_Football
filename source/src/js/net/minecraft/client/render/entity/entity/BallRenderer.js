@@ -6,6 +6,7 @@ export default class BallRenderer extends EntityRenderer {
     constructor(worldRenderer) {
         super(null);
         this.worldRenderer = worldRenderer;
+        this.tempRollQuat = new THREE.Quaternion();
         this.init();
     }
 
@@ -45,5 +46,10 @@ export default class BallRenderer extends EntityRenderer {
 
         this.group.position.set(interpolatedX, interpolatedY, interpolatedZ);
         this.group.scale.set(1, 1, 1);
+
+        if (entity.rollQuat && entity.prevRollQuat) {
+            this.tempRollQuat.copy(entity.prevRollQuat).slerp(entity.rollQuat, partialTicks);
+            this.mesh.quaternion.copy(this.tempRollQuat);
+        }
     }
 }

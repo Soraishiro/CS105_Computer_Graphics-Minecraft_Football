@@ -72,6 +72,14 @@ export default class StadiumGenerator {
     this.world.spawn.x = 0;
     this.world.spawn.y = this.seaLevel + 1;
     this.world.spawn.z = this.TUNNEL_OUTER_Z + 1; // just inside the outer mouth
+
+    // 4 corner coordinates for the light poles
+    this.lightPoles = [
+      [49, 40],
+      [49, -40],
+      [-49, 40],
+      [-49, -40]
+    ];
   }
 
   /**
@@ -129,6 +137,7 @@ export default class StadiumGenerator {
         // Goals and corner flags always check their own coordinate guards
         this._generateGoals(chunk, lx, wx, lz, wz);
         this._generateCornerFlags(chunk, lx, wx, lz, wz);
+        this._generateLightPoles(chunk, lx, wx, lz, wz);
       }
     }
 
@@ -420,20 +429,15 @@ export default class StadiumGenerator {
   // ---------------------------------------------------------------
 
   /**
-   * Classic-Minecraft stadium tunnel — minimal, cohesive palette.
+   * Premium two-level stadium tunnel — glass, dark concrete, and warm torch lighting.
    *
-   * Per user feedback, the previous multi-material LED/neon design was
-   * "phèn" (tacky). This redesign uses only vanilla-era Minecraft blocks
-   * (cobblestone, wood planks, torches, glass) to fit the classic aesthetic:
-   *
-   *   • Floor:    PITCH_LINE   (clean white concrete underfoot).
-   *   • Walls:    COBBLE_STONE (one block — classic stone brick look).
-   *   • Ceiling:  WOOD planks  (warm classic Minecraft cabin/dungeon feel).
-   *   • Lighting: TORCH        (the iconic vanilla light source).
-   *   • Glass strip at the top of each wall as a thin clerestory.
-   *
-   * The outer mouth opens directly into the vestibule (no busy lintel
-   * arrangement); the proper entrance gate is built by _generateVestibule.
+   * Architecture:
+   *   • Floor:        TUNNEL_CARPET (red carpet centre strip, |wx|<=2)
+   *                  CONCRETE_DARK elsewhere
+   *   • Lower walls:  CONCRETE_DARK (y=1..3) with TORCH sconces every 4 blocks
+   *   • Glass strip:  GLASS at y=4 along each wall — clerestory effect
+   *   • Ceiling:      CONCRETE_LIGHT at y=5 — bright upper band
+   *   • Upper fascia: TUNNEL_LED_RING at y=6 — recessed downlight crown
    */
   _generateTunnelGate(chunk, lx, wx, lz, wz) {
     if (!this._isTunnelCorridor(wx, wz)) return;
@@ -443,29 +447,48 @@ export default class StadiumGenerator {
 
     const portalOpen = wz <= this.TUNNEL_OUTER_Z + 1; // last 2 rows: open sky
 
-    const ROOF_Y = 5; // 4 blocks of headroom
-    const WALL_TOP = ROOF_Y - 1;
-
-    // Whole tunnel interior — floor, walls, ceiling — is REDSTONE_LAMP_ON
-    // so the corridor reads as a warm luminous passage end-to-end. Single
-    // block type for the whole tube, completely classic-vanilla aesthetic.
-    const LAMP = BlockRegistry.REDSTONE_LAMP_ON.getId();
-
     // ----- FLOOR -----
     if (absX <= 4) {
-      chunk.setBlockAt(lx, sl, lz, LAMP);
+      const isRedCarpet = absX <= 2;
+      chunk.setBlockAt(
+        lx, sl, lz,
+        isRedCarpet
+          ? BlockRegistry.SEAT_RED.getId()       // red carpet path
+          : BlockRegistry.CONCRETE_DARK.getId(), // dark surround
+      );
     }
 
-    // ----- WALLS -----
-    if (absX === 4 && !portalOpen) {
-      for (let y = 1; y <= WALL_TOP; y++) {
-        chunk.setBlockAt(lx, sl + y, lz, LAMP);
+    // Glass pedestal for the 3D Trophy at wx=0, wz=-23
+    if (wx === 0 && wz === -23) {
+      chunk.setBlockAt(lx, sl + 1, lz, BlockRegistry.GLASS.getId());
+    }
+
+    if (!portalOpen) {
+      // ----- LOWER WALLS (y=1..3) — dark concrete -----
+      if (absX === 4) {
+        for (let y = 1; y <= 3; y++) {
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.CONCRETE_DARK.getId());
+        }
+        // Torch sconces every 4 blocks along z for warm night lighting
+        if (Math.abs(wz - this.TUNNEL_INNER_Z) % 4 === 0) {
+          chunk.setBlockAt(lx, sl + 2, lz, BlockRegistry.TORCH.getId());
+        }
       }
-    }
 
-    // ----- CEILING -----
-    if (absX <= 4 && !portalOpen) {
-      chunk.setBlockAt(lx, sl + ROOF_Y, lz, LAMP);
+      // ----- GLASS CLERESTORY STRIP at y=4 -----
+      if (absX === 4) {
+        chunk.setBlockAt(lx, sl + 4, lz, BlockRegistry.GLASS.getId());
+      }
+
+      // ----- CEILING at y=5 — bright concrete -----
+      if (absX <= 4) {
+        chunk.setBlockAt(lx, sl + 5, lz, BlockRegistry.CONCRETE_LIGHT.getId());
+      }
+
+      // ----- UPPER LED CROWN at y=6 (recessed downlights) -----
+      if (absX <= 4) {
+        chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.TUNNEL_LED_RING.getId());
+      }
     }
   }
 
@@ -518,43 +541,62 @@ export default class StadiumGenerator {
     //   • Attic story y=7 in PITCH_LINE (lighter top course).
     //   • Crown lamps at y=8 over wx ∈ {-3, 0, 3} (REDSTONE_LAMP_ON).
     if (wz === this.VESTIBULE_OUTER_Z && absX <= 6) {
-      const isCenterOpen = absX <= 2 && wz === this.VESTIBULE_OUTER_Z;
-      const isSideOpen = absX === 4 || absX === 5;
-      const isPier = absX === 3 || absX === 6;
-      const isNiche = isSideOpen; // marker for the y=4 inset row
+      // -------------------------------------------------------
+      // LUXURY RED & GOLD ROMAN ARCH
+      //
+      //  Material legend:
+      //    SEAT_RED       — deep crimson brick pillars / facade
+      //    LED_BOARD_RED  — warm gold emissive accent trim
+      //    REDSTONE_LAMP_ON — brilliant lamp crown
+      //    GLASS          — clerestory strip over openings
+      //    CONCRETE_LIGHT — bright lintel capstone
+      //
+      //  Layout (wx = -6 … +6, z = VESTIBULE_OUTER_Z)
+      //    Outer pillars   : |wx| = 6   — full height, red brick
+      //    Inner piers     : |wx| = 3   — full height, red brick
+      //    Gold trim rings : |wx| ∈ {5,4} side-niche accent, y=4
+      //    Central arch    : |wx| ≤ 2, y = 1..5  AIR (5-wide passage)
+      //    Side passages   : wx ∈ {±4,±5}, y = 1..3  AIR
+      //    Main lintel     : y=6, full width CONCRETE_LIGHT
+      //    Gold fascia     : y=7, LED_BOARD_RED warm emissive band
+      //    Attic / parapet : y=8, SEAT_RED
+      //    Crown lamps     : y=9, over wx ∈ {-3,0,3} REDSTONE_LAMP_ON
+      // -------------------------------------------------------
 
-      // Y = 1..5: opening pattern
+      const isCenterOpen = absX <= 2;
+      const isSideOpen   = absX === 4 || absX === 5;
+      const isPillarPier = absX === 3 || absX === 6;
+
+      // Y = 1..5: arch opening pattern
       for (let y = 1; y <= 5; y++) {
-        if (y <= 3 && (isCenterOpen || isSideOpen)) {
-          // Air for both central + side passages.
+        if (isCenterOpen && y <= 5) continue;    // full central arch opening
+        if (isSideOpen   && y <= 3) continue;    // side passage lower 3
+        if (isSideOpen   && y === 4) {
+          // Gold accent niche block above side passage
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.LED_BOARD_RED.getId());
           continue;
         }
-        if (y === 4 && isCenterOpen) continue; // still air in centre
-        if (y === 5 && isCenterOpen) continue; // top of central arch
-        if (y === 4 && isNiche) {
-          // Side-arch niche — dark relief inset above the side openings.
-          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.CONCRETE_DARK.getId());
+        if (isSideOpen   && y === 5) {
+          // Glass clerestory over side opening
+          chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.GLASS.getId());
           continue;
         }
-        // Everything else at y ≤ 5 in this row is stone facade.
-        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.COBBLE_STONE.getId());
+        // Solid pillar/pier in crimson red brick
+        chunk.setBlockAt(lx, sl + y, lz, BlockRegistry.SEAT_RED.getId());
       }
 
-      // Main lintel — full width at y=6.
-      chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.COBBLE_STONE.getId());
+      // y=6 — main lintel capstone in bright concrete
+      chunk.setBlockAt(lx, sl + 6, lz, BlockRegistry.CONCRETE_LIGHT.getId());
 
-      // Attic story at y=7 — lighter stone for visual hierarchy.
-      chunk.setBlockAt(lx, sl + 7, lz, BlockRegistry.PITCH_LINE.getId());
+      // y=7 — gold emissive fascia band (LED_BOARD_RED glows warm amber)
+      chunk.setBlockAt(lx, sl + 7, lz, BlockRegistry.LED_BOARD_RED.getId());
 
-      // Crown lamps at y=8 above the three pier/pillar centres for nighttime
-      // illumination of the arch.
-      if (wx === -3 || wx === 0 || wx === 3) {
-        chunk.setBlockAt(
-          lx,
-          sl + 8,
-          lz,
-          BlockRegistry.REDSTONE_LAMP_ON.getId(),
-        );
+      // y=8 — crimson red parapet
+      chunk.setBlockAt(lx, sl + 8, lz, BlockRegistry.SEAT_RED.getId());
+
+      // y=9 — crown floodlamps over pier / pillar centres
+      if (wx === -6 || wx === -3 || wx === 0 || wx === 3 || wx === 6) {
+        chunk.setBlockAt(lx, sl + 9, lz, BlockRegistry.REDSTONE_LAMP_ON.getId());
       }
     }
   }
@@ -737,5 +779,36 @@ export default class StadiumGenerator {
 
   getSeaLevel() {
     return this.seaLevel;
+  }
+
+  // ---------------------------------------------------------------
+  // Light Poles
+  // ---------------------------------------------------------------
+
+  _generateLightPoles(chunk, lx, wx, lz, wz) {
+    for (let [cx, cz] of this.lightPoles) {
+      if (wx === cx && wz === cz) {
+        let sl = this.seaLevel;
+        // ----- SHAFT: concrete-dark column y=1..14 -----
+        for (let y = sl + 1; y <= sl + 14; y++) {
+          chunk.setBlockAt(lx, y, lz, BlockRegistry.CONCRETE_DARK.getId());
+        }
+
+        // ----- LAMP HEAD: floodlight cluster at y=15..17 -----
+        // y=15 — base ring of 4 FLOODLIGHT panels
+        chunk.setBlockAt(lx, sl + 15, lz, BlockRegistry.FLOODLIGHT.getId());
+
+        // Simulate a 3-block cross-arm by also writing into the
+        // 4 orthogonal neighbours — the generator processes them
+        // independently via their own (lx,wx,lz,wz) pair, so we only
+        // write the current (lx, lz) slot here. Instead we stack more
+        // emissive layers upward to give the pole a "bulb cluster" silhouette:
+        // y=16 — REDSTONE_LAMP_ON core (bright warm centre)
+        chunk.setBlockAt(lx, sl + 16, lz, BlockRegistry.REDSTONE_LAMP_ON.getId());
+
+        // y=17 — top FLOODLIGHT cap (highest point, dominates the skyline)
+        chunk.setBlockAt(lx, sl + 17, lz, BlockRegistry.FLOODLIGHT.getId());
+      }
+    }
   }
 }

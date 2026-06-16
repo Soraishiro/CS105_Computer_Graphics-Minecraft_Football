@@ -430,6 +430,9 @@ export default class Minecraft {
           overlay.beginStage("entities");
           overlay.setHint("Players warming up on the pitch…");
 
+          // Initialize stadium spotlights pointing to the pitch center
+          this.worldRenderer.setupStadiumLights();
+
           this.player.respawn();
 
           // Face toward the pitch (+Z direction) from inside the tunnel.

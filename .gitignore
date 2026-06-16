@@ -29,3 +29,13 @@ build/
 .playwright-mcp/
 *.crx
 after-fix-*.png
+
+# Review artifacts
+review_report.html
+
+# NPM lockfile in subdirectory (this is a vanilla JS project, no npm)
+source/package-lock.json
+
+# Screenshots / raster assets outside source/
+*.png
+!source/src/resources/**/*.png
