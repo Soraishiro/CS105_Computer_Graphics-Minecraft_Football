@@ -1,17 +1,13 @@
-# CS105 — Đồ Án Cuối Kỳ: Mô Phỏng Đồ Họa 3D
-
-Một thế giới 3D theo phong cách Minecraft, lấy bối cảnh sân vận động bóng đá chuẩn FIFA thu nhỏ 50%. Dự án mô phỏng đầy đủ pipeline đồ họa 3D: hình học, phép chiếu phối cảnh, ánh sáng (4 loại nguồn + shadow mapping), texture mapping, và hoạt cảnh — sử dụng Three.js WebGL.
-
-![Demo](./demo.png)
+# CS105
 
 ---
 
-## Yêu cầu
+## Yêu cầu cài đặt
 
 - Trình duyệt hỗ trợ WebGL (Chrome, Firefox, Edge)
 - Python 3.x để chạy HTTP server cục bộ
 
-## Chạy nhanh
+## Cách chạy
 
 ```sh
 cd source
@@ -46,7 +42,7 @@ Mở `http://localhost:8000/index.html`
 
 ### Đồ họa 3D cơ bản
 
-Sử dụng primitive của Three.js để dựng các hình khối trong thế giới:
+Sử dụng Three.js để dựng các hình khối trong thế giới:
 
 | Hình khối                       | Nơi sử dụng                                           |
 | ------------------------------- | ----------------------------------------------------- |
